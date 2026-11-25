@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { lazy, Suspense, useLayoutEffect, useRef } from "react";
 
 import { Filters, Header, MobileNav } from "@/components/Header";
 import { Toaster } from "@/components/ui/sonner";
@@ -7,12 +7,14 @@ import { DataProvider } from "@/hooks/useQuery";
 import { FiltersProvider } from "@/lib/filters";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { routeKey, useRoute, type Route } from "@/lib/route";
-import ActivityDetailView from "@/views/ActivityDetail";
-import FitnessView from "@/views/Fitness";
 import OverviewView from "@/views/Overview";
-import ProgressView from "@/views/Progress";
-import PlanView from "@/views/Plan";
-import PredictionsView from "@/views/Predictions";
+
+// Les vues autres que la synthèse ne sont chargées qu'à la demande : le démarrage de l'appli est plus léger.
+const ActivityDetailView = lazy(() => import("@/views/ActivityDetail"));
+const FitnessView = lazy(() => import("@/views/Fitness"));
+const ProgressView = lazy(() => import("@/views/Progress"));
+const PlanView = lazy(() => import("@/views/Plan"));
+const PredictionsView = lazy(() => import("@/views/Predictions"));
 
 function View({ route }: { route: Route }) {
   switch (route.name) {
@@ -55,7 +57,9 @@ function Shell() {
             <Filters stacked sportApplies={route.name === "overview"} only={route.name === "fitness" ? "period" : undefined} />
           </div>
         )}
-        <View route={route} />
+        <Suspense fallback={<div className="min-h-[60vh]" aria-busy="true" />}>
+          <View route={route} />
+        </Suspense>
       </main>
       <MobileNav route={route} />
     </>

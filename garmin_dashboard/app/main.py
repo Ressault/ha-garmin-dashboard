@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -30,6 +31,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Compression des réponses (interface ~2 Mo → ~600 Ko, JSON ÷ 6) : l'appli s'ouvre bien plus vite sur téléphone.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+
+@app.middleware("http")
+async def _cache_headers(request, call_next):
+    """Les fichiers de /assets portent un hash dans leur nom : le navigateur peut les garder sans rien redemander."""
+    resp = await call_next(request)
+    if request.url.path.startswith("/assets/"):
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif request.url.path in ("/", "/index.html", "/manifest.webmanifest"):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
 
 app.include_router(stats.router)
 app.include_router(plans.router)
