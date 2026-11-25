@@ -554,7 +554,16 @@ def daily_health_row(client, day: str, errors: list) -> dict:
             }
         )
 
-    readiness = safe(f"{day} readiness", errors, client.get_morning_training_readiness, day)
+    # Garmin Connect affiche le score le plus récent de la journée (il bouge après le sommeil, les séances…),
+    # pas celui du réveil : on prend la première entrée de get_training_readiness, et le score du matin en secours.
+    readiness = None
+    latest = safe(f"{day} readiness", errors, client.get_training_readiness, day)
+    if isinstance(latest, list) and latest and isinstance(latest[0], dict) and latest[0].get("score") is not None:
+        readiness = latest[0]
+    elif isinstance(latest, dict) and latest.get("score") is not None:
+        readiness = latest
+    if readiness is None:
+        readiness = safe(f"{day} readiness (matin)", errors, client.get_morning_training_readiness, day)
     if isinstance(readiness, dict):
         row.update(
             {
@@ -616,9 +625,24 @@ def sync_fitness_scores(client, conn, errors: list) -> int:
 
     bb = safe("body_battery", errors, client.get_body_battery, day, day)
     tl = _bb_timeline(bb) if bb else None
+    # Valeur « maintenant » : celle que Garmin donne dans le résumé du jour (la même que Garmin Connect).
+    # La courbe détaillée peut s'arrêter plusieurs heures avant, on ne s'en sert qu'en secours.
+    stats = safe("body_battery_now", errors, client.get_stats, day) or {}
+    now_val = num(stats.get("bodyBatteryMostRecentValue"), 0) if isinstance(stats, dict) else None
     if tl:
+        if now_val is not None and tl[-1][1] != now_val:
+            end = str(stats.get("wellnessEndTimeLocal") or "")
+            try:
+                t = datetime.fromisoformat(end.split(".")[0]) if end else datetime.now()
+            except ValueError:
+                t = datetime.now()
+            minute = t.hour * 60 + t.minute
+            if minute > tl[-1][0]:
+                tl.append([minute, int(now_val)])
         row["body_battery_json"] = json.dumps(tl, separators=(",", ":"))
-        row["body_battery_now"] = float(tl[-1][1])
+        row["body_battery_now"] = float(now_val if now_val is not None else tl[-1][1])
+    elif now_val is not None:
+        row["body_battery_now"] = float(now_val)
 
     if all(v is None for k, v in row.items() if k != "date"):
         return 0
