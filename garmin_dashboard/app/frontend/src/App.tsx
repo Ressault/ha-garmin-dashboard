@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 
-import { Header, MobileNav } from "@/components/Header";
+import { Filters, Header, MobileNav } from "@/components/Header";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DataProvider } from "@/hooks/useQuery";
@@ -49,6 +49,12 @@ function Shell() {
     <>
       <Header route={route} />
       <main key={`${routeKey(route)}:${theme}`} className="page-in mx-auto max-w-[1240px] px-4 pt-6 pb-28 sm:px-6 md:pb-14">
+        {/* Mobile : les filtres restent affichés en haut de la page (sur ordinateur ils sont dans l'en-tête) */}
+        {route.name !== "activity" && (
+          <div className="mb-5 md:hidden">
+            <Filters stacked sportApplies={route.name === "overview"} />
+          </div>
+        )}
         <View route={route} />
       </main>
       <MobileNav route={route} />

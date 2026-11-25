@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Activity, CalendarDays, HeartPulse, LayoutGrid, TrendingUp, Loader2, Moon, RefreshCw, SlidersHorizontal, Sun, Timer } from "lucide-react";
+import { Activity, CalendarDays, HeartPulse, LayoutGrid, TrendingUp, Loader2, Moon, RefreshCw, Sun, Timer } from "lucide-react";
 import { toast } from "sonner";
 
 import { Segmented } from "@/components/common";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDataVersion, useQuery } from "@/hooks/useQuery";
 import { api } from "@/lib/api";
@@ -104,16 +103,17 @@ function SyncButton({ iconOnly, stale }: { iconOnly?: boolean; stale?: boolean }
   );
 }
 
-function Filters({ stacked, sportApplies }: { stacked?: boolean; sportApplies: boolean }) {
+export function Filters({ stacked, sportApplies, size }: { stacked?: boolean; sportApplies: boolean; size?: "sm" | "md" }) {
   const { period, setPeriod, sport, setSport } = useFilters();
   return (
     <div className={cn("flex gap-3", stacked ? "flex-col" : "items-center")}>
-      <Segmented label="Période" value={period} onChange={setPeriod} options={PERIODS} className={stacked ? "w-full" : "w-[232px]"} />
+      <Segmented label="Période" value={period} onChange={setPeriod} options={PERIODS} size={size} className={stacked ? "w-full" : "w-[232px]"} />
       <Segmented
         label="Sport"
         value={sport}
         onChange={setSport}
         options={SPORTS}
+        size={size}
         disabled={!sportApplies}
         className={stacked ? "w-full" : "w-[272px]"}
       />
@@ -160,23 +160,6 @@ export function Header({ route }: { route: Route }) {
         </Tabs>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Mobile : les filtres passent dans une feuille */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="secondary" size="icon" className="md:hidden" aria-label="Filtres de période et de sport">
-                <SlidersHorizontal />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-              <SheetHeader>
-                <SheetTitle>Filtres</SheetTitle>
-                <SheetDescription>S'appliquent à toutes les vues.</SheetDescription>
-              </SheetHeader>
-              <div className="px-5 pb-2">
-                <Filters stacked sportApplies={sportApplies} />
-              </div>
-            </SheetContent>
-          </Sheet>
           <ThemeToggle />
           <span className="md:hidden">
             <SyncButton iconOnly stale={stale} />
