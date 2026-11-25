@@ -35,7 +35,7 @@ function Header({ a }: { a: ActivityDetail }) {
   const te = teInfo(a.aerobic_te);
   const gap = a.avg_gap_speed_ms && foot ? fmtPace(a.avg_gap_speed_ms) : null;
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <div className="flex items-start gap-3.5">
         <SportTile type={a.sport_type} className="size-12" />
         <div className="min-w-0">
@@ -129,18 +129,25 @@ export default function ActivityDetailView({ id }: { id: number }) {
   const foot = a ? isFoot(a.sport_type) : true;
 
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <a
-        href="#/"
+        href="#/activite"
+        onClick={(e) => {
+          // On revient là d'où l'on vient (synthèse, liste, records…)
+          if (window.history.length > 1) {
+            e.preventDefault();
+            window.history.back();
+          }
+        }}
         className="text-primary -ml-1 inline-flex w-fit items-center gap-1 rounded-lg px-1 py-1 text-[15px] font-medium outline-none transition-opacity duration-150 hover:opacity-80 focus-visible:ring-[3px] focus-visible:ring-ring/50 active:opacity-60"
       >
-        <ArrowLeft className="size-4" /> Sorties
+        <ArrowLeft className="size-4" /> Retour
       </a>
 
       {q.error && !a && <QueryError error={q.error} onRetry={q.reload} />}
 
       {!a && !q.error && (
-        <div className="grid gap-5">
+        <div className="grid grid-cols-1 gap-5">
           <Skeleton className="h-24 w-full max-w-xl" />
           <Skeleton className="h-[360px] w-full rounded-2xl" />
           <Skeleton className="h-[420px] w-full rounded-2xl" />

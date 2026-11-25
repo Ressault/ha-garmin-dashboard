@@ -372,6 +372,10 @@ EFFORTS = {
 }
 
 
+# Vitesse au-delà de laquelle un effort est jugé faux (2'34/km à pied, 79 km/h à vélo)
+MAX_SPEED_MS = {"foot": 6.5, "bike": 22.0}
+
+
 def best_time(ts: list, dist: float) -> Optional[float]:
     """Plus petit temps pour couvrir `dist` mètres, fenêtre glissante interpolée.
 
@@ -428,7 +432,8 @@ def _activity_efforts(row, kind: str) -> dict:
             if (row["distance_m"] or 0) < dist * 0.98:
                 continue
             t = best_time(ts, dist)
-            if t:
+            # Un trou ou un saut du GPS donne des « records » impossibles (400 m en 48 s) : on les écarte.
+            if t and dist / t <= MAX_SPEED_MS[kind]:
                 out[label] = round(t, 1)
     if len(_EFFORT_CACHE) > 4000:
         _EFFORT_CACHE.clear()

@@ -151,6 +151,7 @@ def init_db(db_path: Optional[Path] = None) -> None:
             ("hill_strength", "REAL"), ("hill_endurance", "REAL"), ("fitness_age_target", "REAL"),
             ("body_battery_now", "REAL"), ("body_battery_charged", "REAL"),
             ("body_battery_drained", "REAL"), ("body_battery_json", "TEXT"),
+            ("sleep_json", "TEXT"), ("heart_json", "TEXT"),
         ):
             if col not in dh:
                 conn.execute(f"ALTER TABLE daily_health ADD COLUMN {col} {typ}")

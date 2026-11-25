@@ -309,3 +309,119 @@ input.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(10 1
 
 /* Fond de carte OSM en mode sombre */
 .dark .leaflet-tile-pane .dark-tiles { filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.9) saturate(0.55); }
+
+/* =========================================================================
+   Refonte « Apple Santé » : jetons et briques communes
+   ========================================================================= */
+:root {
+  --label2: #6e6e73;
+  --label3: #8a8a8e;
+  --sep: rgb(60 60 67 / 0.12);
+  --fill: rgb(118 118 128 / 0.12);
+  --fill2: #f2f2f7;
+  --chip: rgb(255 255 255 / 0.62);
+  --bar: rgb(250 250 252 / 0.78);
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(30 40 90 / 0.12);
+  --ok: #248a3d;
+  --warn: #a24600;
+  --info: #0a55b8;
+}
+.dark {
+  --label2: #98989d;
+  --label3: #8e8e93;
+  --sep: rgb(84 84 88 / 0.45);
+  --fill: rgb(118 118 128 / 0.24);
+  --fill2: #2c2c2e;
+  --chip: rgb(44 44 46 / 0.72);
+  --bar: rgb(30 30 32 / 0.8);
+  --card-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset;
+  --ok: #30d158;
+  --warn: #ff9f0a;
+  --info: #64a8ff;
+}
+@theme inline {
+  --color-label2: var(--label2);
+  --color-sep: var(--sep);
+  --color-fill: var(--fill);
+  --color-fill2: var(--fill2);
+}
+
+/* Fond de page teinté par section (le haut prend la couleur de la rubrique) */
+.hk-page { --tint: #3e62ff; background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 9%, var(--background)) 0, var(--background) 420px); }
+
+.hk-card {
+  display: block;
+  background: var(--card);
+  border-radius: 26px;
+  padding: 18px;
+  box-shadow: var(--card-shadow);
+  min-width: 0;
+}
+.hk-card[data-tint] { background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 7%, var(--card)), var(--card) 72%); }
+a.hk-card, button.hk-card, a.hk-press, button.hk-press { transition: transform 140ms var(--ease-out-strong); -webkit-tap-highlight-color: transparent; }
+a.hk-card:active, button.hk-card:active, a.hk-press:active, button.hk-press:active { transform: scale(0.98); }
+a.hk-card:focus-visible, a.hk-press:focus-visible, button.hk-press:focus-visible { outline: 3px solid rgb(10 132 255 / 0.5); outline-offset: 2px; }
+
+.hk-chip {
+  display: flex; align-items: center; gap: 10px; flex: none;
+  height: 56px; padding: 0 14px 0 10px; border-radius: 18px;
+  background: var(--chip); border: 1px solid var(--sep); color: var(--foreground);
+}
+.hk-chip[aria-current="page"] { background: var(--card); border-color: rgb(10 132 255 / 0.45); box-shadow: 0 4px 14px -6px rgb(10 100 216 / 0.35); }
+.hk-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+.hk-scroll::-webkit-scrollbar { display: none; }
+.hk-scroll > * { scroll-snap-align: start; }
+
+.hk-pill { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 36px; padding: 0 13px 0 11px; border-radius: 999px; border: 1px solid var(--sep); background: var(--card); color: var(--foreground); font-size: 14px; font-weight: 600; transition: background-color 160ms ease, color 160ms ease; }
+.hk-pill[aria-pressed="true"] { background: var(--foreground); color: var(--background); border-color: var(--foreground); }
+
+.hk-tabbar {
+  position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  z-index: 40; display: flex; gap: 2px; padding: 5px; border-radius: 999px;
+  background: var(--bar); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.6); box-shadow: 0 10px 30px -8px rgb(20 30 70 / 0.28);
+}
+.dark .hk-tabbar { border-color: rgb(255 255 255 / 0.08); box-shadow: 0 10px 30px -8px rgb(0 0 0 / 0.6); }
+.hk-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 92px; padding: 7px 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--foreground); transition: background-color 200ms var(--ease-out-strong), color 200ms ease; }
+.hk-tab[aria-current="page"] { background: var(--fill); color: #0a64d8; }
+.dark .hk-tab[aria-current="page"] { color: #409cff; }
+
+.hk-side {
+  background: var(--bar); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.7); box-shadow: 0 12px 40px -16px rgb(20 30 70 / 0.25); border-radius: 26px;
+}
+.dark .hk-side { border-color: rgb(255 255 255 / 0.07); }
+.hk-side a { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; border-radius: 12px; font-size: 15px; transition: background-color 150ms ease; }
+.hk-side a:hover { background: var(--fill); }
+.hk-side a[aria-current="page"] { background: rgb(10 132 255 / 0.14); color: #0a64d8; font-weight: 600; }
+.dark .hk-side a[aria-current="page"] { color: #409cff; }
+
+/* Entrée des cartes : courte, décalée de 40 ms (pages ouvertes souvent : discret) */
+@keyframes hk-in { from { opacity: 0; transform: translateY(8px); } }
+.hk-stagger > * { animation: hk-in 260ms var(--ease-out-strong) both; }
+.hk-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.hk-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.hk-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.hk-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.hk-stagger > *:nth-child(n + 6) { animation-delay: 200ms; }
+
+/* Cœur : battement au rythme de la FC au repos, cœur flou en écho derrière */
+.hk-beat { transform-origin: 50% 55%; animation: hk-beat var(--beat, 1.1s) var(--ease-out-strong) infinite; }
+.hk-ghost { filter: blur(16px); transform-origin: 50% 55%; animation: hk-ghost var(--beat, 1.1s) var(--ease-out-strong) infinite; }
+@keyframes hk-beat { 0% { transform: scale(1); } 12% { transform: scale(1.07); } 26% { transform: scale(0.99); } 38% { transform: scale(1.04); } 60%, 100% { transform: scale(1); } }
+@keyframes hk-ghost { 0% { transform: scale(1); opacity: 0.5; } 18% { transform: scale(1.16); opacity: 0.8; } 70%, 100% { transform: scale(1.04); opacity: 0.4; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hk-stagger > *, .hk-beat, .hk-ghost { animation: none !important; }
+  a.hk-card:active, a.hk-press:active, button.hk-press:active { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .hk-tabbar, .hk-side { backdrop-filter: none; background: var(--card); }
+}
+.hk-badge { background: var(--bb); color: var(--bf); }
+.b-green { --bb: #e3f7e8; --bf: #1f7a35; } .b-blue { --bb: #e1eeff; --bf: #0a55b8; } .b-orange { --bb: #fff0db; --bf: #a24600; }
+.b-red { --bb: #ffe8ec; --bf: #c4002b; } .b-teal { --bb: #ddf5f1; --bf: #00796b; } .b-indigo { --bb: #e6e9ff; --bf: #3a3fb8; } .b-gray { --bb: #ededf2; --bf: #48484a; }
+.dark .b-green { --bb: rgb(48 209 88 / 0.18); --bf: #4cd964; } .dark .b-blue { --bb: rgb(10 132 255 / 0.2); --bf: #64a8ff; }
+.dark .b-orange { --bb: rgb(255 159 10 / 0.18); --bf: #ffb340; } .dark .b-red { --bb: rgb(255 55 95 / 0.2); --bf: #ff6482; }
+.dark .b-teal { --bb: rgb(0 184 169 / 0.2); --bf: #4dd8c8; } .dark .b-indigo { --bb: rgb(94 107 255 / 0.22); --bf: #9aa3ff; } .dark .b-gray { --bb: rgb(118 118 128 / 0.24); --bf: #d1d1d6; }
+@media (min-width: 768px) { .hk-tabbar { display: none; } }

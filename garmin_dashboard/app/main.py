@@ -302,6 +302,22 @@ def fitness(days: int = Query(90, ge=7, le=730)) -> dict:
     return {"days": days, "latest": latest, "series": rows, "bb_timeline": bb_timeline}
 
 
+@app.get("/api/health/details")
+def health_details() -> dict:
+    """Dernière nuit (phases, hypnogramme, besoin) et FC heure par heure d'aujourd'hui et d'hier."""
+    with db.connect() as conn:
+        s = conn.execute(
+            "SELECT date, sleep_json FROM daily_health WHERE sleep_json IS NOT NULL ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+        h = conn.execute(
+            "SELECT date, heart_json FROM daily_health WHERE heart_json IS NOT NULL ORDER BY date DESC LIMIT 2"
+        ).fetchall()
+    return {
+        "sleep": {"date": s["date"], **json.loads(s["sleep_json"])} if s else None,
+        "heart": [{"date": r["date"], **json.loads(r["heart_json"])} for r in h],
+    }
+
+
 def fmt_race(sec: Optional[float]) -> Optional[str]:
     return hms(sec)
 

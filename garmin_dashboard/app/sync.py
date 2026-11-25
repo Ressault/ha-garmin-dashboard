@@ -22,7 +22,7 @@ import json
 import sys
 import threading
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable, Optional
 
 from garminconnect.activity_details import parse_activity_detail_metrics
@@ -503,6 +503,81 @@ def backfill_power_curves(conn) -> int:
 # ---------------------------------------------------------------------------
 
 
+# Phases de sommeil : niveaux Garmin (0 profond, 1 léger, 2 paradoxal, 3 éveil) -> lettres courtes
+_SLEEP_LEVEL = {0: "deep", 1: "light", 2: "rem", 3: "awake"}
+
+
+def _gmt_ms(s: Optional[str]) -> Optional[int]:
+    if not s:
+        return None
+    try:
+        return int(datetime.fromisoformat(s.replace(".0", "").rstrip("Z")).replace(tzinfo=timezone.utc).timestamp() * 1000)
+    except ValueError:
+        return None
+
+
+def sleep_details(sleep: dict) -> Optional[dict]:
+    """Détail d'une nuit pour la page Sommeil : phases, hypnogramme, besoin et heure de coucher conseillée."""
+    dto = (sleep or {}).get("dailySleepDTO") or {}
+    if not dto.get("sleepTimeSeconds"):
+        return None
+    start_gmt, start_loc = dto.get("sleepStartTimestampGMT"), dto.get("sleepStartTimestampLocal")
+    offset = (start_loc - start_gmt) if start_gmt and start_loc else 0
+    levels = []
+    for lv in sleep.get("sleepLevels") or []:
+        a, b = _gmt_ms(lv.get("startGMT")), _gmt_ms(lv.get("endGMT"))
+        stage = _SLEEP_LEVEL.get(int(round(lv.get("activityLevel", -1))))
+        if a is None or b is None or stage is None or not start_gmt:
+            continue
+        levels.append([round((a - start_gmt) / 60000, 1), round((b - start_gmt) / 60000, 1), stage])
+    scores = dto.get("sleepScores") or {}
+    need = dto.get("sleepNeed") or {}
+    nxt = dto.get("nextSleepNeed") or {}
+    return {
+        "start_local_ms": start_loc,
+        "end_local_ms": dto.get("sleepEndTimestampLocal"),
+        "offset_ms": offset,
+        "deep_s": dto.get("deepSleepSeconds"),
+        "light_s": dto.get("lightSleepSeconds"),
+        "rem_s": dto.get("remSleepSeconds"),
+        "awake_s": dto.get("awakeSleepSeconds"),
+        "awake_count": dto.get("awakeCount"),
+        "avg_hr": dto.get("avgHeartRate"),
+        "nap_s": dto.get("napTimeSeconds"),
+        "qualifiers": {k: (v or {}).get("qualifierKey") for k, v in scores.items() if isinstance(v, dict)},
+        "need_min": need.get("actual"),
+        "need_baseline_min": need.get("baseline"),
+        "next_need_min": nxt.get("actual"),
+        "next_need_baseline_min": nxt.get("baseline"),
+        "bedtime_start_min": nxt.get("recommendedBedtimeStartMins"),
+        "bedtime_end_min": nxt.get("recommendedBedtimeEndMins"),
+        "levels": levels,
+    }
+
+
+def heart_details(hr: Optional[dict]) -> Optional[dict]:
+    """FC de la journée résumée heure par heure (min, max) pour la page Forme et santé."""
+    if not isinstance(hr, dict):
+        return None
+    values = hr.get("heartRateValues") or []
+    hours: list = [None] * 24
+    gmt0 = _gmt_ms(hr.get("startTimestampGMT"))
+    for item in values:
+        if not isinstance(item, (list, tuple)) or len(item) < 2 or item[0] is None or item[1] is None or gmt0 is None:
+            continue
+        h = int((item[0] - gmt0) // 3600000)
+        if 0 <= h < 24:
+            lo_hi = hours[h]
+            hours[h] = [min(lo_hi[0], item[1]), max(lo_hi[1], item[1])] if lo_hi else [item[1], item[1]]
+    return {
+        "min": hr.get("minHeartRate"),
+        "max": hr.get("maxHeartRate"),
+        "resting": hr.get("restingHeartRate"),
+        "resting_7d": hr.get("lastSevenDaysAvgRestingHeartRate"),
+        "hours": hours,
+    }
+
+
 def daily_health_row(client, day: str, errors: list) -> dict:
     row: dict[str, Any] = {"date": day}
 
@@ -517,6 +592,8 @@ def daily_health_row(client, day: str, errors: list) -> dict:
             "rem_sleep_s": num(dto.get("remSleepSeconds"), 0),
         }
     )
+
+    row["sleep_json"] = db.to_json(sleep_details(sleep))
 
     hrv = (safe(f"{day} hrv", errors, client.get_hrv_data, day) or {}).get("hrvSummary") or {}
     row.update(
@@ -539,6 +616,8 @@ def daily_health_row(client, day: str, errors: list) -> dict:
             "stress_avg": num(stats.get("averageStressLevel"), 0),
         }
     )
+
+    row["heart_json"] = db.to_json(heart_details(safe(f"{day} heart", errors, client.get_heart_rates, day)))
 
     status = safe(f"{day} training_status", errors, client.get_daily_training_status, day)
     if status:

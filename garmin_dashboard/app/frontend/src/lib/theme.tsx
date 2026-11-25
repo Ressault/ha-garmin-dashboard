@@ -11,7 +11,8 @@ function initial(): ThemeMode {
   } catch {
     /* stockage indisponible */
   }
-  return "dark";
+  // Sans choix enregistré, on suit le réglage du téléphone ou de l'ordinateur (comme les apps Apple)
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 function apply(mode: ThemeMode) {

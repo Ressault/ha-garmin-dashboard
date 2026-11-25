@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { SPORT_STYLE } from "@/components/common";
-import { sportGroup } from "@/lib/format";
+import { GROUP_META, groupOf } from "@/ui/derive";
 
 /** Mini-tracé GPS en SVG (sans fond de carte) : projection simple corrigée de la latitude. */
 export function MiniTrack({ points, type, className }: { points?: [number, number][] | null; type: string | null; className?: string }) {
@@ -22,7 +21,7 @@ export function MiniTrack({ points, type, className }: { points?: [number, numbe
     return { d: xy.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(""), start: xy[0], end: xy[xy.length - 1] };
   }, [points]);
 
-  const color = SPORT_STYLE[sportGroup(type)].color;
+  const color = GROUP_META[groupOf(type)].color;
   return (
     <svg viewBox="0 0 88 48" className={className} aria-hidden>
       <rect width="88" height="48" rx="10" fill="currentColor" fillOpacity="0.05" />

@@ -307,6 +307,39 @@ export interface RecordsResponse {
   analysed: { activities: number; with_detail: number };
 }
 
+export interface SleepDetails {
+  date: string;
+  start_local_ms: number | null;
+  end_local_ms: number | null;
+  deep_s: number | null;
+  light_s: number | null;
+  rem_s: number | null;
+  awake_s: number | null;
+  awake_count: number | null;
+  avg_hr: number | null;
+  nap_s: number | null;
+  qualifiers: Record<string, string | null>;
+  need_min: number | null;
+  need_baseline_min: number | null;
+  next_need_min: number | null;
+  next_need_baseline_min: number | null;
+  bedtime_start_min: number | null;
+  bedtime_end_min: number | null;
+  levels: [number, number, "deep" | "light" | "rem" | "awake"][];
+}
+export interface HeartDay {
+  date: string;
+  min: number | null;
+  max: number | null;
+  resting: number | null;
+  resting_7d: number | null;
+  hours: ([number, number] | null)[];
+}
+export interface HealthDetails {
+  sleep: SleepDetails | null;
+  heart: HeartDay[];
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     headers: init?.body ? { "Content-Type": "application/json" } : undefined,
@@ -365,4 +398,5 @@ export const api = {
   createPlan: (plan: PlanInput) => req<{ id: number; replaced: boolean }>("/plans", { method: "POST", body: JSON.stringify(plan) }),
   deletePlan: (id: number) => req<{ deleted: number }>(`/plans/${id}`, { method: "DELETE" }),
   syncStatus: () => req<SyncStatus>("/sync/status"),
+  healthDetails: () => req<HealthDetails>("/health/details"),
 };
