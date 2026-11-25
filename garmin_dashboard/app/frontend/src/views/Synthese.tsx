@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { MiniTrack } from "@/components/MiniTrack";
 import { useQuery } from "@/hooks/useQuery";
@@ -9,24 +9,28 @@ import { AreaLine, Bars, Gauge, Petals } from "@/ui/charts";
 import { byGroup, GROUP_META, GROUP_ORDER, groupOf, pct, readiness, totals, windows } from "@/ui/derive";
 import { BigHeart, GROUP_ICON, MiniHeart, MiniPillars, MiniSleep, MiniTrend } from "@/ui/icons";
 import { Badge, Card, Chip, ChipRow, Delta, Hr, Lbl, P, Page, Sm, Skel, Stagger, Val } from "@/ui/kit";
+import { Avatar, ProfileDialog, useProfile } from "@/ui/profile";
 import { SyncButton, ThemeToggle } from "@/ui/shell";
 import { dow, useActivities, useHealth, usePillars } from "@/ui/data";
 
 /* ---------- Pastilles de raccourcis (partagées avec les autres écrans) ---------- */
 function Profile() {
+  const { name } = useProfile();
+  const [open, setOpen] = useState(false);
   return (
     <div className="flex items-center gap-3.5 px-1 pb-4">
-      <span aria-hidden className="flex size-16 shrink-0 items-center justify-center rounded-full text-[28px] font-semibold text-white shadow-[0_0_0_3px_var(--card),0_6px_16px_-6px_rgb(40_60_140/0.4)]" style={{ background: "linear-gradient(135deg,#7AB8FF,#B48CF2)" }}>
-        A
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="m-0 text-[30px] leading-[1.1] font-bold tracking-[-0.02em]">Antonin</p>
-        <Sm className="mt-0.5">Synchronisé avec Garmin toutes les 20 min</Sm>
-      </div>
+      <button type="button" onClick={() => setOpen(true)} aria-label="Modifier mon profil" className="hk-press flex min-w-0 flex-1 items-center gap-3.5 rounded-2xl text-left">
+        <Avatar size={64} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[30px] leading-[1.1] font-bold tracking-[-0.02em]">{name}</span>
+          <Sm className="mt-0.5">Synchronisé avec Garmin toutes les 20 min</Sm>
+        </span>
+      </button>
       <div className="flex gap-2 md:hidden">
         <SyncButton />
         <ThemeToggle />
       </div>
+      <ProfileDialog open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }

@@ -118,6 +118,11 @@ CREATE TABLE IF NOT EXISTS thresholds (
     updated_at             TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS profile (
+    key                    TEXT PRIMARY KEY,
+    value                  TEXT
+);
+
 CREATE TABLE IF NOT EXISTS sync_log (
     id                     INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at             TEXT,

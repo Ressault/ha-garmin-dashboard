@@ -425,3 +425,14 @@ a.hk-card:focus-visible, a.hk-press:focus-visible, button.hk-press:focus-visible
 .dark .b-orange { --bb: rgb(255 159 10 / 0.18); --bf: #ffb340; } .dark .b-red { --bb: rgb(255 55 95 / 0.2); --bf: #ff6482; }
 .dark .b-teal { --bb: rgb(0 184 169 / 0.2); --bf: #4dd8c8; } .dark .b-indigo { --bb: rgb(94 107 255 / 0.22); --bf: #9aa3ff; } .dark .b-gray { --bb: rgb(118 118 128 / 0.24); --bf: #d1d1d6; }
 @media (min-width: 768px) { .hk-tabbar { display: none; } }
+
+/* Fenêtre de profil : feuille en bas sur mobile, carte centrée sur grand écran */
+.hk-dialog { margin: auto auto 0; width: min(100%, 440px); max-width: 100%; padding: 0; border: 0; border-radius: 28px 28px 0 0; background: var(--card); color: var(--foreground); box-shadow: 0 -12px 50px -10px rgb(0 0 0 / 0.35); }
+.hk-dialog::backdrop { background: rgb(0 0 0 / 0.38); backdrop-filter: blur(6px); }
+.hk-dialog[open] { animation: hk-sheet 280ms var(--ease-out-strong); }
+.hk-dialog[open]::backdrop { animation: hk-fade 220ms ease-out; }
+@keyframes hk-sheet { from { transform: translateY(40px); opacity: 0; } }
+@keyframes hk-fade { from { opacity: 0; } }
+@media (min-width: 640px) { .hk-dialog { margin: auto; border-radius: 28px; box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.45); } }
+@media (prefers-reduced-motion: reduce) { .hk-dialog[open], .hk-dialog[open]::backdrop { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .hk-dialog::backdrop { backdrop-filter: none; } }

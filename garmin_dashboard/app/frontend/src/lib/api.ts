@@ -340,6 +340,11 @@ export interface HealthDetails {
   heart: HeartDay[];
 }
 
+export interface Profile {
+  name: string;
+  photo: string; // data-URL JPEG, "" si aucune
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     headers: init?.body ? { "Content-Type": "application/json" } : undefined,
@@ -399,4 +404,6 @@ export const api = {
   deletePlan: (id: number) => req<{ deleted: number }>(`/plans/${id}`, { method: "DELETE" }),
   syncStatus: () => req<SyncStatus>("/sync/status"),
   healthDetails: () => req<HealthDetails>("/health/details"),
+  profile: () => req<Profile>("/profile"),
+  saveProfile: (p: Partial<Profile>) => req<Profile>("/profile", { method: "PUT", body: JSON.stringify(p) }),
 };

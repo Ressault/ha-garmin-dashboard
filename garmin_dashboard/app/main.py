@@ -302,6 +302,35 @@ def fitness(days: int = Query(90, ge=7, le=730)) -> dict:
     return {"days": days, "latest": latest, "series": rows, "bb_timeline": bb_timeline}
 
 
+class ProfileIn(BaseModel):
+    name: Optional[str] = None
+    photo: Optional[str] = None  # image JPEG en data-URL (redimensionnée côté navigateur) ; "" = supprimer
+
+
+@app.get("/api/profile")
+def get_profile() -> dict:
+    with db.connect() as conn:
+        rows = conn.execute("SELECT key, value FROM profile").fetchall()
+    d = {r["key"]: r["value"] for r in rows}
+    return {"name": d.get("name") or "", "photo": d.get("photo") or ""}
+
+
+@app.put("/api/profile")
+def save_profile(body: ProfileIn) -> dict:
+    fields = body.model_dump(exclude_unset=True)
+    if "name" in fields:
+        fields["name"] = (fields["name"] or "").strip()[:40]
+    photo = fields.get("photo")
+    if photo:
+        if not photo.startswith("data:image/") or len(photo) > 400_000:
+            raise HTTPException(400, "Photo invalide ou trop lourde.")
+    with db.connect() as conn:
+        for k, v in fields.items():
+            conn.execute("INSERT INTO profile(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", (k, v or ""))
+        conn.commit()
+    return get_profile()
+
+
 @app.get("/api/health/details")
 def health_details() -> dict:
     """Dernière nuit (phases, hypnogramme, besoin) et FC heure par heure d'aujourd'hui et d'hier."""
