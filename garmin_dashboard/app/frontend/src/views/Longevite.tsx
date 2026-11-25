@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { useQuery } from "@/hooks/useQuery";
 import { api, type FitnessDay, type HeartDay, type SleepDetails } from "@/lib/api";
-import { fmtHM, nf, shortDay } from "@/lib/format";
+import { addDays, fmtHM, isoDate, nf, shortDay } from "@/lib/format";
 import { PATH } from "@/lib/route";
 import { Balance, BandBars, DashBand, HourRanges, Hypnogram, LineBand, LoadChart, Ring, STAGE_COLOR } from "@/ui/charts";
 import { useHealth, usePillars } from "@/ui/data";
@@ -278,7 +278,10 @@ export function Forme() {
   const rhrBand = personalBand(series, "resting_hr", 30);
   const bpm = latest?.resting_hr ?? null;
   const beat = `${60 / Math.max(bpm ?? 60, 30)}s`;
-  const heart: HeartDay | undefined = det?.heart?.[day];
+  // Juste après minuit, la journée en cours est encore vide : on n'affiche que les jours qui ont des mesures
+  const hdays: HeartDay[] = (det?.heart ?? []).filter((h) => h.hours.some(Boolean));
+  const heart: HeartDay | undefined = hdays[Math.min(day, hdays.length - 1)];
+  const dayName = (d: string) => (d === isoDate(new Date()) ? "Aujourd'hui" : d === isoDate(addDays(new Date(), -1)) ? "Hier" : shortDay(d));
   const rhr42 = lastN(series, 42);
   const vo2 = series.map((d) => d.vo2max).filter((v): v is number => v != null);
   const vo2Delta = vo2.length > 1 ? vo2[vo2.length - 1] - vo2[0] : null;
@@ -310,13 +313,13 @@ export function Forme() {
         <Stagger><Skel h={300} /></Stagger>
       ) : (
         <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2">
-          {det?.heart && det.heart.length > 0 && heart && (
+          {heart && (
             <Card tint="pink">
               <div className="flex items-center justify-between gap-2">
-                <Lbl>{day === 0 ? "Aujourd'hui" : "Hier"}, heure par heure</Lbl>
-                {det.heart.length > 1 && (
+                <Lbl>{dayName(heart.date)}, heure par heure</Lbl>
+                {hdays.length > 1 && (
                   <div role="group" aria-label="Jour" className="flex gap-1 rounded-full bg-fill p-0.5">
-                    {["Auj.", "Hier"].map((l, i) => (
+                    {hdays.map((h) => (dayName(h.date) === "Aujourd'hui" ? "Auj." : dayName(h.date))).map((l, i) => (
                       <button key={l} type="button" aria-pressed={day === i} onClick={() => setDay(i)} className="rounded-full px-2.5 py-1 text-[13px] font-semibold" style={day === i ? { background: "var(--card)", boxShadow: "0 1px 3px rgb(0 0 0 / .12)" } : { color: "var(--label2)" }}>
                         {l}
                       </button>
@@ -329,7 +332,7 @@ export function Forme() {
               <Hr />
               <div className="grid grid-cols-2 gap-3">
                 <div><Sm style={{ color: "#C4002B", fontWeight: 600 }}>FC au repos</Sm><Val>{heart.resting != null ? `${heart.resting} BPM` : "—"}</Val><Sm>Moy. 7 j : {heart.resting_7d ?? "—"}</Sm></div>
-                <div><Sm style={{ color: "#C4002B", fontWeight: 600 }}>Pendant le sommeil</Sm><Val>{det.sleep?.avg_hr != null ? `${det.sleep.avg_hr} BPM` : "—"}</Val><Sm>Dernière nuit</Sm></div>
+                <div><Sm style={{ color: "#C4002B", fontWeight: 600 }}>Pendant le sommeil</Sm><Val>{det?.sleep?.avg_hr != null ? `${det.sleep.avg_hr} BPM` : "—"}</Val><Sm>Dernière nuit</Sm></div>
               </div>
             </Card>
           )}

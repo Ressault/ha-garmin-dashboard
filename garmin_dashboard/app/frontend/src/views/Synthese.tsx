@@ -216,7 +216,7 @@ function VolumeCard({ acts }: { acts: ActivityListItem[] }) {
   );
 }
 
-export function HeartWidget({ latest, today }: { latest: FitnessDay; today?: { min: number | null; max: number | null; resting_7d: number | null } | null }) {
+export function HeartWidget({ latest, today }: { latest: FitnessDay; today?: { date: string; min: number | null; max: number | null; resting_7d: number | null } | null }) {
   const bpm = latest.resting_hr;
   return (
     <Card tint="pink" href={PATH.forme}>
@@ -229,7 +229,7 @@ export function HeartWidget({ latest, today }: { latest: FitnessDay; today?: { m
           </p>
           {today?.min != null && today.max != null && (
             <>
-              <Sm className="mt-3">Amplitude aujourd'hui</Sm>
+              <Sm className="mt-3">Amplitude {today.date === isoDate(new Date()) ? "aujourd'hui" : "hier"}</Sm>
               <Val>
                 {today.min}–{today.max} BPM
               </Val>
@@ -337,7 +337,7 @@ export default function Synthese() {
   const last = items[0];
   const series = fit?.series ?? [];
   const latest = fit?.latest ?? series[series.length - 1] ?? null;
-  const heartToday = det?.heart?.[0] ?? null;
+  const heartToday = det?.heart?.find((h) => h.hours.some(Boolean)) ?? null;
   const bbPoints = fit?.bb_timeline?.points ?? [];
 
   return (
