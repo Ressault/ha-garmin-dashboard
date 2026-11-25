@@ -7,7 +7,7 @@ Deux façons, la première est la plus simple si ton compte demande un code de v
 1. **Jeton (recommandé)** : sur ton PC, ouvre `C:\Users\<toi>\.garth\garmin_tokens.json` avec le Bloc-notes, copie tout le contenu et colle-le dans l'option **garmin_tokens**.
 2. **Identifiants** : renseigne **garmin_email** et **garmin_password**. Ça ne marche que si Garmin ne demande pas de code de validation.
 
-Au premier démarrage, l'add-on importe `initial_sync_days` jours d'historique (365 par défaut), puis se resynchronise toutes les 30 minutes.
+Au premier démarrage, l'add-on importe `initial_sync_days` jours d'historique (365 par défaut), puis se resynchronise tout seul : une synchro légère toutes les 20 minutes (Body Battery, disponibilité, nouvelles sorties) et une synchro complète toutes les heures.
 
 ## Accès depuis le téléphone (privé)
 

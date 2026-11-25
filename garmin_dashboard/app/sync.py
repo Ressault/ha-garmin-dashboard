@@ -931,6 +931,70 @@ def _run_sync(days: int, force: bool, client, log) -> dict:
     return summary
 
 
+def run_light_sync(client=None, log=print) -> dict:
+    """Synchro légère (toutes les 20 min) : les 3 derniers jours d'activités, la santé et les scores du jour.
+
+    Elle laisse de côté les prédictions, les seuils et l'historique de forme, qui bougent peu et coûtent le plus
+    de requêtes : la synchro complète s'en charge (environ toutes les heures)."""
+    if not SYNC_LOCK.acquire(blocking=False):
+        raise RuntimeError("Une synchronisation est déjà en cours.")
+    try:
+        if client is None:
+            from garmin_client import get_garmin_client
+
+            client = get_garmin_client()
+        db.init_db()
+        started = datetime.now().isoformat(timespec="seconds")
+        t0 = time.time()
+        today = date.today()
+        since = today - timedelta(days=2)
+        errors: list[str] = []
+        summary: dict[str, Any] = {"days": 3, "light": True}
+        with db.connect() as conn:
+            acts = safe("get_activities_by_date", errors, client.get_activities_by_date, since.isoformat(), today.isoformat()) or []
+            for act in acts:
+                row = activity_summary_row(act)
+                if row["activity_id"]:
+                    db.upsert(conn, "activities", "activity_id", row, keep_existing=("notes", "ai_analysis"))
+            conn.commit()
+            summary["activities_summaries"] = len(acts)
+
+            # Détail seulement des sorties pas encore détaillées (nouvelles)
+            todo = [
+                r["activity_id"]
+                for r in conn.execute(
+                    "SELECT activity_id FROM activities WHERE activity_date >= ? AND details_synced = 0 ORDER BY activity_date",
+                    (since.isoformat(),),
+                )
+            ]
+            for aid in todo:
+                row = activity_detail_row(client, aid, errors)
+                db.upsert(conn, "activities", "activity_id", row, keep_existing=("notes", "ai_analysis"))
+                conn.commit()
+            summary["activities_detailed"] = len(todo)
+
+            db.upsert(conn, "daily_health", "date", daily_health_row(client, today.isoformat(), errors))
+            conn.commit()
+            summary["health_days"] = 1
+            summary["fitness_scores"] = sync_fitness_scores(client, conn, errors)
+            conn.commit()
+            if todo:
+                summary["fitness_days"] = recompute_fitness(conn)
+                summary["power_curves_backfilled"] = backfill_power_curves(conn)
+            summary["errors"] = errors[:50]
+            summary["error_count"] = len(errors)
+            summary["duration_s"] = round(time.time() - t0, 1)
+            conn.execute(
+                "INSERT INTO sync_log (started_at, finished_at, days, summary_json) VALUES (?,?,?,?)",
+                (started, datetime.now().isoformat(timespec="seconds"), 3, json.dumps(summary, ensure_ascii=False)),
+            )
+            conn.commit()
+        log(f"Synchro légère terminée en {summary['duration_s']} s — {len(errors)} erreur(s) non bloquante(s).")
+        return summary
+    finally:
+        SYNC_LOCK.release()
+
+
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

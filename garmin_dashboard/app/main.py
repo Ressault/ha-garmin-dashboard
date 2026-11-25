@@ -60,11 +60,12 @@ LIST_COLS = (
 )
 
 
-AUTO_SYNC_MINUTES = 30
+AUTO_SYNC_MINUTES = 20  # synchro légère (Body Battery, disponibilité, nouvelles sorties)
+FULL_SYNC_MINUTES = 60  # synchro complète (prédictions, seuils, historique de forme)
 
 
 def _auto_sync_loop() -> None:
-    """Synchro incrémentale au démarrage puis toutes les 30 min (tant que l'API tourne)."""
+    """Synchro complète au démarrage, puis une synchro légère toutes les 20 min et une complète toutes les heures."""
     import threading
     import time
 
@@ -79,11 +80,16 @@ def _auto_sync_loop() -> None:
                     days = initial
     except Exception:
         pass
+    last_full = 0.0
     while True:
         try:
             if not sync.SYNC_LOCK.locked():
-                sync.run_sync(days=days)
-                days = 30
+                if time.time() - last_full >= FULL_SYNC_MINUTES * 60 - 60:
+                    sync.run_sync(days=days)
+                    days = 30
+                    last_full = time.time()
+                else:
+                    sync.run_light_sync()
         except Exception as exc:  # réseau, jeton expiré... : on réessaiera au prochain tour
             print(f"[auto-sync] {exc}")
         time.sleep(AUTO_SYNC_MINUTES * 60)
