@@ -49,10 +49,10 @@ function Shell() {
     <>
       <Header route={route} />
       <main key={`${routeKey(route)}:${theme}`} className="page-in mx-auto max-w-[1240px] px-4 pt-6 pb-28 sm:px-6 md:pb-14">
-        {/* Mobile : les filtres restent affichés en haut de la page (sur ordinateur ils sont dans l'en-tête) */}
-        {route.name !== "activity" && (
+        {/* Mobile : seuls les filtres qui agissent sur la page sont affichés (sur ordinateur ils sont dans l'en-tête) */}
+        {(route.name === "overview" || route.name === "fitness") && (
           <div className="mb-5 md:hidden">
-            <Filters stacked sportApplies={route.name === "overview"} />
+            <Filters stacked sportApplies={route.name === "overview"} only={route.name === "fitness" ? "period" : undefined} />
           </div>
         )}
         <View route={route} />

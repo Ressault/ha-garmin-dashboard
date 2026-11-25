@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Activity, CalendarDays, HeartPulse, LayoutGrid, TrendingUp, Loader2, Moon, RefreshCw, Sun, Timer } from "lucide-react";
+import {
+  Activity,
+  CalendarDays,
+  HeartPulse,
+  LayoutGrid,
+  TrendingUp,
+  Loader2,
+  Moon,
+  RefreshCw,
+  Sun,
+  Timer,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Segmented } from "@/components/common";
@@ -14,25 +25,79 @@ import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export const NAV = [
-  { name: "overview", label: "Synthèse", short: "Synthèse", path: "/", Icon: LayoutGrid },
-  { name: "progress", label: "Progrès", short: "Progrès", path: "/progress", Icon: TrendingUp },
-  { name: "fitness", label: "Forme & santé", short: "Forme", path: "/fitness", Icon: HeartPulse },
-  { name: "plan", label: "Programme", short: "Programme", path: "/plan", Icon: CalendarDays },
-  { name: "predictions", label: "Prédictions & trail", short: "Prédictions", path: "/predictions", Icon: Timer },
+  {
+    name: "overview",
+    label: "Synthèse",
+    short: "Synthèse",
+    path: "/",
+    Icon: LayoutGrid,
+  },
+  {
+    name: "progress",
+    label: "Progrès",
+    short: "Progrès",
+    path: "/progress",
+    Icon: TrendingUp,
+  },
+  {
+    name: "fitness",
+    label: "Forme & santé",
+    short: "Forme",
+    path: "/fitness",
+    Icon: HeartPulse,
+  },
+  {
+    name: "plan",
+    label: "Programme",
+    short: "Programme",
+    path: "/plan",
+    Icon: CalendarDays,
+  },
+  {
+    name: "predictions",
+    label: "Prédictions & trail",
+    short: "Prédictions",
+    path: "/predictions",
+    Icon: Timer,
+  },
 ] as const;
 
 const navValue = (r: Route) => (r.name === "activity" ? "overview" : r.name);
 
 function Brand() {
   return (
-    <a href="#/" className="flex items-center gap-2.5 rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
+    <a
+      href="#/"
+      className="flex items-center gap-2.5 rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+    >
       <svg viewBox="0 0 64 64" className="size-8" aria-hidden>
         <rect width="64" height="64" rx="15" fill="#1C1C1E" />
-        <circle cx="32" cy="32" r="19" fill="none" stroke="#2C2C2E" strokeWidth="7" />
-        <path d="M32 13a19 19 0 1 1-17.6 11.8" fill="none" stroke="#FF375F" strokeWidth="7" strokeLinecap="round" />
-        <path d="M32 22a10 10 0 1 1-9.2 6.2" fill="none" stroke="#30D158" strokeWidth="6" strokeLinecap="round" />
+        <circle
+          cx="32"
+          cy="32"
+          r="19"
+          fill="none"
+          stroke="#2C2C2E"
+          strokeWidth="7"
+        />
+        <path
+          d="M32 13a19 19 0 1 1-17.6 11.8"
+          fill="none"
+          stroke="#FF375F"
+          strokeWidth="7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M32 22a10 10 0 1 1-9.2 6.2"
+          fill="none"
+          stroke="#30D158"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
       </svg>
-      <span className="text-[15px] font-semibold tracking-tight">Garmin Dashboard</span>
+      <span className="text-[15px] font-semibold tracking-tight">
+        Garmin Dashboard
+      </span>
     </a>
   );
 }
@@ -53,7 +118,13 @@ function ThemeToggle() {
   );
 }
 
-function SyncButton({ iconOnly, stale }: { iconOnly?: boolean; stale?: boolean }) {
+function SyncButton({
+  iconOnly,
+  stale,
+}: {
+  iconOnly?: boolean;
+  stale?: boolean;
+}) {
   const { bump } = useDataVersion();
   const [syncing, setSyncing] = useState(false);
 
@@ -61,7 +132,8 @@ function SyncButton({ iconOnly, stale }: { iconOnly?: boolean; stale?: boolean }
     if (syncing) return;
     setSyncing(true);
     const id = toast.loading("Synchronisation avec Garmin Connect…", {
-      description: "Récupération des sorties et de la santé des 30 derniers jours.",
+      description:
+        "Récupération des sorties et de la santé des 30 derniers jours.",
     });
     try {
       const r = await api.sync(30);
@@ -76,7 +148,10 @@ function SyncButton({ iconOnly, stale }: { iconOnly?: boolean; stale?: boolean }
           description: `${parts.join(" · ")} · ${r.error_count} erreur${r.error_count > 1 ? "s" : ""} ignorée${r.error_count > 1 ? "s" : ""}`,
         });
       } else {
-        toast.success("Synchronisation terminée", { id, description: `${parts.join(" · ")} · ${r.duration_s} s` });
+        toast.success("Synchronisation terminée", {
+          id,
+          description: `${parts.join(" · ")} · ${r.duration_s} s`,
+        });
       }
     } catch (e) {
       toast.error("Échec de la synchronisation", {
@@ -103,20 +178,41 @@ function SyncButton({ iconOnly, stale }: { iconOnly?: boolean; stale?: boolean }
   );
 }
 
-export function Filters({ stacked, sportApplies, size }: { stacked?: boolean; sportApplies: boolean; size?: "sm" | "md" }) {
+export function Filters({
+  stacked,
+  sportApplies,
+  size,
+  only,
+}: {
+  stacked?: boolean;
+  sportApplies: boolean;
+  size?: "sm" | "md";
+  only?: "period" | "sport";
+}) {
   const { period, setPeriod, sport, setSport } = useFilters();
   return (
     <div className={cn("flex gap-3", stacked ? "flex-col" : "items-center")}>
-      <Segmented label="Période" value={period} onChange={setPeriod} options={PERIODS} size={size} className={stacked ? "w-full" : "w-[232px]"} />
-      <Segmented
-        label="Sport"
-        value={sport}
-        onChange={setSport}
-        options={SPORTS}
-        size={size}
-        disabled={!sportApplies}
-        className={stacked ? "w-full" : "w-[272px]"}
-      />
+      {only !== "sport" && (
+        <Segmented
+          label="Période"
+          value={period}
+          onChange={setPeriod}
+          options={PERIODS}
+          size={size}
+          className={stacked ? "w-full" : "w-[232px]"}
+        />
+      )}
+      {only !== "period" && (
+        <Segmented
+          label="Sport"
+          value={sport}
+          onChange={setSport}
+          options={SPORTS}
+          size={size}
+          disabled={!sportApplies}
+          className={stacked ? "w-full" : "w-[272px]"}
+        />
+      )}
     </div>
   );
 }
@@ -127,7 +223,11 @@ export function Header({ route }: { route: Route }) {
   const status = useQuery("sync-status", api.syncStatus);
   const last = status.data?.last?.finished_at;
   // Mise en avant du bouton seulement si les données ont plus d'1 h
-  const stale = !last || Date.now() - new Date(last.includes("T") ? last : last.replace(" ", "T")).getTime() > 3600 * 1000;
+  const stale =
+    !last ||
+    Date.now() -
+      new Date(last.includes("T") ? last : last.replace(" ", "T")).getTime() >
+      3600 * 1000;
   const { bump } = useDataVersion();
   const seen = useRef<string | undefined>(undefined);
 
@@ -151,7 +251,12 @@ export function Header({ route }: { route: Route }) {
         <Tabs value={navValue(route)} className="ml-4 hidden md:block">
           <TabsList aria-label="Navigation principale">
             {NAV.map(({ name, label, path, Icon }) => (
-              <TabsTrigger key={name} value={name} onClick={() => go(path)} className="px-4">
+              <TabsTrigger
+                key={name}
+                value={name}
+                onClick={() => go(path)}
+                className="px-4"
+              >
                 <Icon />
                 {label}
               </TabsTrigger>
@@ -175,7 +280,9 @@ export function Header({ route }: { route: Route }) {
           <Filters sportApplies={sportApplies} />
           <p className="text-muted-foreground ml-auto flex items-center gap-1.5 text-xs">
             <Activity className="size-3.5" />
-            {last ? `Dernière synchro ${relativeTime(last)}` : "Aucune synchronisation"}
+            {last
+              ? `Dernière synchro ${relativeTime(last)}`
+              : "Aucune synchronisation"}
           </p>
         </div>
       </div>
