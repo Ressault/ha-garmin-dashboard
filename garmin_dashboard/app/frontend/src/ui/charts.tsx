@@ -333,3 +333,64 @@ export function Balance({ left }: { left: number }) {
     </svg>
   );
 }
+
+
+/** Courbe des temps d'un même effort au fil des sorties, avec les 3 meilleurs en médaille (comme Strava). */
+export type RecordPoint = { t: number; v: number; medal?: 0 | 1 | 2 };
+const MEDAL_FILL = [
+  { bg: "#F5C33B", fg: "#7A5600", t: "PR" },
+  { bg: "#C9CDD6", fg: "#4A4F5A", t: "2" },
+  { bg: "#E3A574", fg: "#6B3A12", t: "3" },
+];
+export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fmtY: (v: number) => string; label: string }) {
+  const W = 340, H = 190, L = 6, R = 6, T = 22, B = 26;
+  if (points.length === 0) return null;
+  const pts = [...points].sort((a, b) => a.t - b.t);
+  const vs = pts.map((p) => p.v);
+  let lo = Math.min(...vs), hi = Math.max(...vs);
+  if (hi - lo < 1e-6) { lo -= 1; hi += 1; }
+  const padV = (hi - lo) * 0.12;
+  lo -= padV; hi += padV;
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const X = (t: number) => (t1 === t0 ? (L + W - R) / 2 : L + 12 + ((t - t0) / (t1 - t0)) * (W - L - R - 24));
+  const Y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const xy = pts.map((p) => [X(p.t), Y(p.v)] as [number, number]);
+  let d = "";
+  if (xy.length > 1) {
+    d = `M${xy[0][0]},${xy[0][1]}`;
+    for (let i = 0; i < xy.length - 1; i++) {
+      const p0 = xy[i - 1] ?? xy[i], p1 = xy[i], p2 = xy[i + 1], p3 = xy[i + 2] ?? p2;
+      const c1: [number, number] = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+      const c2: [number, number] = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      const cl = (y: number) => Math.min(H - B, Math.max(T, y));
+      d += ` C${c1[0]},${cl(c1[1])} ${c2[0]},${cl(c2[1])} ${p2[0]},${p2[1]}`;
+    }
+  }
+  const grid = [0, 0.5, 1].map((f) => lo + (hi - lo) * (1 - f));
+  const dateTxt = (t: number) => new Date(t).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "2-digit" });
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} style={{ display: "block", overflow: "visible" }}>
+      {grid.map((v, i) => (
+        <g key={i}>
+          <line x1={L} x2={W - R} y1={Y(v)} y2={Y(v)} stroke="var(--sep)" strokeWidth="1" />
+          <text x={L} y={Y(v) - 4} fontSize="10.5" fill="var(--label2)">{fmtY(v)}</text>
+        </g>
+      ))}
+      {d && <path d={d} fill="none" stroke="#3E8EF7" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />}
+      {pts.filter((p) => p.medal == null).map((p, i) => (
+        <circle key={i} cx={X(p.t)} cy={Y(p.v)} r="3.6" fill="var(--card)" stroke="var(--label2)" strokeWidth="1.6" />
+      ))}
+      {pts.filter((p) => p.medal != null).map((p, i) => {
+        const m = MEDAL_FILL[p.medal as number];
+        return (
+          <g key={`m${i}`} transform={`translate(${X(p.t)},${Y(p.v)})`}>
+            <circle r="11" fill={m.bg} stroke="var(--card)" strokeWidth="2" />
+            <text textAnchor="middle" dy="3.4" fontSize={p.medal === 0 ? 8.5 : 11} fontWeight="800" fill={m.fg}>{m.t}</text>
+          </g>
+        );
+      })}
+      <text x={L} y={H - 6} fontSize="10.5" fill="var(--label2)">{dateTxt(t0)}</text>
+      <text x={W - R} y={H - 6} fontSize="10.5" textAnchor="end" fill="var(--label2)">{dateTxt(t1)}</text>
+    </svg>
+  );
+}

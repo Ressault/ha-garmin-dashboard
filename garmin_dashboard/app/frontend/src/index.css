@@ -368,9 +368,8 @@ a.hk-card:focus-visible, a.hk-press:focus-visible, button.hk-press:focus-visible
   background: var(--chip); border: 1px solid var(--sep); color: var(--foreground);
 }
 .hk-chip[aria-current="page"] { background: var(--card); border-color: rgb(10 132 255 / 0.45); box-shadow: 0 4px 14px -6px rgb(10 100 216 / 0.35); }
-.hk-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+.hk-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
 .hk-scroll::-webkit-scrollbar { display: none; }
-.hk-scroll > * { scroll-snap-align: start; }
 
 .hk-pill { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 36px; padding: 0 13px 0 11px; border-radius: 999px; border: 1px solid var(--sep); background: var(--card); color: var(--foreground); font-size: 14px; font-weight: 600; transition: background-color 160ms ease, color 160ms ease; }
 .hk-pill[aria-pressed="true"] { background: var(--foreground); color: var(--background); border-color: var(--foreground); }
@@ -436,3 +435,17 @@ a.hk-card:focus-visible, a.hk-press:focus-visible, button.hk-press:focus-visible
 @media (min-width: 640px) { .hk-dialog { margin: auto; border-radius: 28px; box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.45); } }
 @media (prefers-reduced-motion: reduce) { .hk-dialog[open], .hk-dialog[open]::backdrop { animation: none; } }
 @media (prefers-reduced-transparency: reduce) { .hk-dialog::backdrop { backdrop-filter: none; } }
+
+/* Contrôle segmenté (Course / Trail / Vélo) et onglets soulignés (Analyse / Top 10) */
+.hk-seg { color: var(--label2); transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease; }
+.hk-seg[aria-pressed="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 4px rgb(0 0 0 / 0.14); }
+.hk-tab-u { position: relative; color: var(--label2); transition: color 160ms ease; -webkit-tap-highlight-color: transparent; }
+.hk-tab-u[aria-selected="true"] { color: var(--foreground); }
+.hk-tab-u::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: -1px; height: 3px; border-radius: 3px; background: #0a84ff; transform: scaleX(0); transition: transform 220ms var(--ease-out-strong); }
+.hk-tab-u[aria-selected="true"]::after { transform: scaleX(1); }
+@media (prefers-reduced-motion: reduce) { .hk-tab-u::after { transition: none; } }
+
+/* Glissement entre onglets : pas de sélection de texte ni de menu, l'onglet actif se soulève */
+.hk-chip, .hk-tab { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+html[data-scrub] body { -webkit-user-select: none; user-select: none; }
+html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-current="page"] { transform: scale(1.05); }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2, Moon, RefreshCw, Sun } from "lucide-react";
 import { toast } from "sonner";
 
@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { PATH, sectionOf, type Route } from "@/lib/route";
 import { useTheme } from "@/lib/theme";
 import { IFlower, IGrid, IHeart, ISearch } from "./icons";
+import { useScrubNav } from "./scrub";
 
 const TABS = [
   { key: "synthese", label: "Synthèse", href: PATH.synthese, Icon: IHeart },
@@ -17,8 +18,10 @@ const TABS = [
 /** Barre d'onglets flottante et translucide (mobile) */
 export function TabBar({ route }: { route: Route }) {
   const sec = sectionOf(route);
+  const ref = useRef<HTMLElement>(null);
+  useScrubNav(ref, "a.hk-tab");
   return (
-    <nav aria-label="Navigation principale" className="hk-tabbar md:hidden">
+    <nav ref={ref} aria-label="Navigation principale" className="hk-tabbar md:hidden">
       {TABS.map(({ key, label, href, Icon }) => (
         <a key={key} href={href} className="hk-tab hk-press" aria-current={sec === key ? "page" : undefined}>
           <span style={{ color: sec === key ? "#0A84FF" : "currentColor" }}>

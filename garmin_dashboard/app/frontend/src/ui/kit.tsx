@@ -1,5 +1,6 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useScrubNav } from "./scrub";
 
 /* Briques visuelles de la refonte « Apple Santé » */
 
@@ -142,8 +143,16 @@ export function Chip({ href, icon, label, value, current }: { href: string; icon
   );
 }
 export function ChipRow({ children, label }: { children: ReactNode; label: string }) {
+  const ref = useRef<HTMLElement>(null);
+  useScrubNav(ref, "a.hk-chip");
+  // La rangée est recréée à chaque page : on garde l'onglet actif visible
+  useLayoutEffect(() => {
+    const row = ref.current;
+    const cur = row?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (row && cur) row.scrollLeft = Math.max(0, cur.offsetLeft - (row.clientWidth - cur.offsetWidth) / 2);
+  }, []);
   return (
-    <nav aria-label={label} className="hk-scroll -mx-4 px-4 pb-0.5 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
+    <nav ref={ref} aria-label={label} className="hk-scroll -mx-4 px-4 pb-0.5 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
       {children}
     </nav>
   );

@@ -442,9 +442,20 @@ def _activity_efforts(row, kind: str) -> dict:
 
 
 @router.get("/efforts")
-def efforts(kind: str = Query("foot", pattern="^(foot|bike)$")) -> dict:
-    """Pour chaque distance : le meilleur temps de chaque sortie, dans l'ordre chronologique."""
-    groups = ("run", "trail") if kind == "foot" else ("bike",)
+def efforts(
+    kind: str = Query("foot", pattern="^(foot|bike)$"),
+    sport: Optional[str] = Query(None, pattern="^(run|trail|bike)$"),
+) -> dict:
+    """Pour chaque distance : le meilleur temps de chaque sortie, dans l'ordre chronologique.
+
+    Comme Strava, `sport` sépare la course à pied (run), le trail (trail) et le vélo (bike) :
+    les records de chacun sont distincts. Sans `sport`, `kind=foot` regroupe course et trail.
+    """
+    if sport:
+        kind = "bike" if sport == "bike" else "foot"
+        groups: tuple = (sport,)
+    else:
+        groups = ("run", "trail") if kind == "foot" else ("bike",)
     with db.connect() as conn:
         acts = conn.execute(
             "SELECT activity_id, name, sport_type, activity_date, distance_m, updated_at, timeseries_json "
@@ -460,7 +471,7 @@ def efforts(kind: str = Query("foot", pattern="^(foot|bike)$")) -> dict:
         ]
         if items:
             distances.append({"distance_m": dist, "label": label, "efforts": items})
-    return {"kind": kind, "distances": distances,
+    return {"kind": kind, "sport": sport, "distances": distances,
             "analysed": {"activities": len(cand), "with_detail": sum(1 for a in cand if a["timeseries_json"])}}
 
 

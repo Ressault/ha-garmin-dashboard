@@ -256,8 +256,10 @@ export interface RecordRef {
   date: string;
   sport_type: string | null;
 }
+export type RecordSport = "run" | "trail" | "bike";
 export interface EffortsResponse {
   kind: "foot" | "bike";
+  sport?: RecordSport | null;
   distances: {
     distance_m: number;
     label: string;
@@ -397,7 +399,7 @@ export const api = {
   monthly: (months: number, sport: StatSport) => req<MonthlyResponse>(`/stats/monthly?months=${months}&sport=${sport}`),
   effort: () => req<EffortResponse>("/stats/effort?weeks=12"),
   records: () => req<RecordsResponse>("/stats/records"),
-  efforts: (kind: "foot" | "bike") => req<EffortsResponse>(`/stats/efforts?kind=${kind}`),
+  efforts: (sport: RecordSport) => req<EffortsResponse>(`/stats/efforts?sport=${sport}`),
   plans: () => req<{ plans: PlanSummary[] }>("/plans"),
   plan: (id: number) => req<PlanDetail>(`/plans/${id}`),
   createPlan: (plan: PlanInput) => req<{ id: number; replaced: boolean }>("/plans", { method: "POST", body: JSON.stringify(plan) }),
