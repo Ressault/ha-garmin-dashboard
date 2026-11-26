@@ -144,85 +144,138 @@ export function Chip({ href, icon, label, value, current }: { href: string; icon
 }
 // Le bandeau reste en place d'une pilule à l'autre (le contenu dessous glisse) : on garde la position du reflet
 // et le défilement de la rangée précédente (même bandeau = même libellé) pour les faire glisser vers la pilule active.
-let last: { label: string; x: number; w: number; scroll: number; t: number } | null = null;
+let last: { label: string; idx: number; scroll: number; t: number } | null = null;
+
+/** Carte de réfraction d'un rectangle arrondi (rayon R) : au bord, le fond est lu « replié » vers l'intérieur */
+function roundedMap(w: number, h: number, R: number, bezel: number): string {
+  const k = 2, c = document.createElement("canvas");
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  const ctx = c.getContext("2d");
+  if (!ctx) return "";
+  const img = ctx.createImageData(c.width, c.height);
+  const bx = w / 2 - R, by = h / 2 - R;
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+    const px = (x + 0.5) / k - w / 2, py = (y + 0.5) / k - h / 2;
+    const qx = Math.abs(px) - bx, qy = Math.abs(py) - by;
+    const ox = Math.max(qx, 0), oy = Math.max(qy, 0), ol = Math.hypot(ox, oy);
+    const d = -(ol + Math.min(Math.max(qx, qy), 0) - R); // profondeur sous le bord
+    let nx = 0, ny = 0;
+    if (ol > 0) { nx = Math.sign(px) * ox / ol; ny = Math.sign(py) * oy / ol; } else if (qx > qy) nx = Math.sign(px); else ny = Math.sign(py);
+    let Rv = 128, Gv = 128;
+    if (d >= 0 && d < bezel) { const m = Math.pow(1 - d / bezel, 2.2); Rv = 128 - nx * m * 127; Gv = 128 - ny * m * 127; }
+    const i = (y * c.width + x) * 4;
+    img.data[i] = Rv; img.data[i + 1] = Gv; img.data[i + 2] = 128; img.data[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  return c.toDataURL("image/png");
+}
+const SVGNS = "http://www.w3.org/2000/svg";
+/** Filtre SVG de verre (même chaîne que la barre du bas : déplacement R/V/B, flou, saturation) */
+function glassFilter(id: string, w: number, h: number, map: string, scale: number, blur: number): SVGFilterElement {
+  const f = document.createElementNS(SVGNS, "filter");
+  const set = (el: Element, a: Record<string, string | number>) => { for (const [n, v] of Object.entries(a)) el.setAttribute(n, String(v)); return el; };
+  set(f, { id, x: 0, y: 0, width: w, height: h, filterUnits: "userSpaceOnUse", primitiveUnits: "userSpaceOnUse", "color-interpolation-filters": "sRGB" });
+  const ch = (r: number, g: number, b: number) => `${r} 0 0 0 0  0 ${g} 0 0 0  0 0 ${b} 0 0  0 0 0 1 0`;
+  const add = (tag: string, a: Record<string, string | number>) => f.appendChild(set(document.createElementNS(SVGNS, tag), a));
+  add("feImage", { href: map, x: 0, y: 0, width: w, height: h, preserveAspectRatio: "none", result: "map" });
+  ([["r", 0.9, ch(1, 0, 0)], ["g", 1, ch(0, 1, 0)], ["b", 1.12, ch(0, 0, 1)]] as const).forEach(([n, s, m]) => {
+    add("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * s, xChannelSelector: "R", yChannelSelector: "G", result: "d" + n });
+    add("feColorMatrix", { in: "d" + n, type: "matrix", values: m, result: n });
+  });
+  add("feBlend", { in: "r", in2: "g", mode: "screen", result: "rg" });
+  add("feBlend", { in: "rg", in2: "b", mode: "screen", result: "rgb" });
+  add("feGaussianBlur", { in: "rgb", stdDeviation: blur, result: "bl" });
+  add("feColorMatrix", { in: "bl", type: "saturate", values: 1.8 });
+  return f;
+}
 
 export function ChipRow({ children, label }: { children: ReactNode; label: string }) {
   const ref = useRef<HTMLElement>(null);
   const track = useRef<HTMLDivElement>(null);
-  const glide = useRef<HTMLSpanElement>(null); // goutte (rail de verre, < 768 px)
-  const glideDesk = useRef<HTMLSpanElement>(null); // goutte (dans la rangée, ≥ 768 px)
+  const defs = useRef<SVGSVGElement>(null);
   useScrubNav(ref, "a.hk-chip");
   useLayoutEffect(() => {
-    const row = ref.current, tr = track.current;
-    const gs = [glide.current, glideDesk.current].filter(Boolean) as HTMLSpanElement[];
-    const cur = row?.querySelector<HTMLElement>('[aria-current="page"]') ?? null;
-    if (!row || !tr || !gs.length) return;
-    gs.forEach((g) => { g.style.display = cur ? "" : "none"; }); // Synthèse : aucune pilule active, pas de goutte
-    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // Le verre vit HORS du rail défilant (un backdrop-filter dans un conteneur à défilement ne voit pas le contenu de la page) :
-    // un corps de verre par pilule dans un rail collant, décalé de -scrollLeft pour suivre la rangée.
+    const row = ref.current, tr = track.current, svg = defs.current;
+    if (!row || !tr || !svg) return;
     const chips = [...row.querySelectorAll<HTMLElement>("a.hk-chip")];
-    const bodies = chips.map(() => { const s = document.createElement("span"); s.className = "hk-pg"; tr.insertBefore(s, tr.firstChild); return s; });
+    const idx = chips.findIndex((c) => c.getAttribute("aria-current") === "page");
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Verre hors du rail défilant (un backdrop-filter dans un conteneur à défilement ne voit pas la page) :
+    // un corps de verre par pilule dans un rail collant, décalé de -scrollLeft pour suivre la rangée.
+    const bodies = chips.map((_, i) => {
+      const s = document.createElement("span");
+      s.className = "hk-pg";
+      if (i === idx) s.dataset.on = "";
+      s.appendChild(document.createElement("i")); // voile blanc de la pilule active
+      tr.appendChild(s);
+      return s;
+    });
+    const uid = Math.random().toString(36).slice(2, 7);
+    const sizes: string[] = [];
     const place = () => {
-      chips.forEach((c, i) => { bodies[i].style.transform = `translateX(${c.offsetLeft}px)`; bodies[i].style.width = `${c.offsetWidth}px`; });
-      if (glideDesk.current && cur) { glideDesk.current.style.top = `${cur.offsetTop}px`; glideDesk.current.style.height = `${cur.offsetHeight}px`; }
+      chips.forEach((c, i) => {
+        const w = c.offsetWidth, h = c.offsetHeight, b = bodies[i];
+        b.style.transform = `translateX(${c.offsetLeft}px)`; b.style.width = `${w}px`;
+        if (w && sizes[i] !== `${w}x${h}`) { // filtre de réfraction à la taille exacte de la pilule
+          sizes[i] = `${w}x${h}`;
+          const id = `hk-pgf-${uid}-${i}`;
+          svg.querySelector(`#${id}`)?.remove();
+          svg.appendChild(glassFilter(id, w, h, roundedMap(w, h, 22, 14), 22, 5));
+          b.style.setProperty("--pgf", `url(#${id})`);
+        }
+      });
       tr.style.width = `${row.scrollWidth}px`;
       tr.style.transform = `translateX(${-row.scrollLeft}px)`;
     };
-    const rect = () => {
-      const r = row.getBoundingClientRect(), c = (cur ?? chips[0]).getBoundingClientRect();
-      return { r, c, x: c.left - r.left + row.scrollLeft, w: c.width };
-    };
     const target = () => {
-      const { r, c } = rect();
+      const cur = chips[idx];
+      if (!cur) return row.scrollLeft;
+      const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
       return Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
     };
-    const setG = (x: number, w: number, anim: boolean) => {
-      gs.forEach((g) => {
-        if (!anim) { g.style.transition = "none"; }
-        g.style.width = `${w}px`; g.style.transform = `translateX(${x}px)`;
-      });
-    };
-    if (!cur) { // pas de pilule active : verre seul, rangée au début
-      place();
-      const onS = () => { tr.style.transform = `translateX(${-row.scrollLeft}px)`; };
-      const id0 = requestAnimationFrame(place);
-      row.addEventListener("scroll", onS, { passive: true });
-      const ro0 = new ResizeObserver(place); ro0.observe(row);
-      return () => { cancelAnimationFrame(id0); row.removeEventListener("scroll", onS); ro0.disconnect(); bodies.forEach((b) => b.remove()); };
-    }
     const from = last && last.label === label && performance.now() - last.t < 4000 ? last : null;
     if (from) row.scrollLeft = Math.min(from.scroll, row.scrollWidth - row.clientWidth);
-    row.scrollTo({ left: target(), behavior: from && !reduce ? "smooth" : "auto" });
+    if (idx >= 0) row.scrollTo({ left: target(), behavior: from && !reduce ? "smooth" : "auto" });
     place();
-    const to = rect();
-    setG(from ? from.x : to.x, from ? from.w : to.w, false);
-    void gs[0].offsetWidth;
-    gs.forEach((g) => { g.style.transition = ""; });
-    setG(to.x, to.w, true);
-    last = { label, x: to.x, w: to.w, scroll: row.scrollLeft, t: performance.now() };
-    const id = requestAnimationFrame(() => { // recalage unique une fois les polices posées
-      if (!from) row.scrollLeft = target();
-      place();
-      const n = rect();
-      setG(n.x, n.w, true);
-      last = { label, x: n.x, w: n.w, scroll: row.scrollLeft, t: performance.now() };
-    });
+    // Changement de pilule : la pilule choisie grossit légèrement puis se pose ; le voile blanc passe de l'ancienne à la nouvelle
+    if (from && idx >= 0 && from.idx !== idx) {
+      const on = bodies[idx].firstElementChild as HTMLElement, off = bodies[from.idx]?.firstElementChild as HTMLElement | undefined;
+      const fade = { duration: 220, easing: "cubic-bezier(0.23, 1, 0.32, 1)" };
+      on.animate([{ opacity: 0 }, { opacity: 1 }], fade);
+      if (off) { off.animate([{ opacity: 1 }, { opacity: 0 }], fade); }
+      if (!reduce) {
+        const zoom: Keyframe[] = [{ scale: 1, easing: "cubic-bezier(0.23, 1, 0.32, 1)" }, { scale: 1.07, offset: 0.35, easing: "cubic-bezier(0.32, 0.72, 0, 1)" }, { scale: 1 }];
+        [chips[idx], bodies[idx]].forEach((el) => el.animate(zoom, { duration: 420 }));
+      }
+    }
+    last = { label, idx, scroll: target(), t: performance.now() };
+    const id = requestAnimationFrame(() => { if (!from && idx >= 0) row.scrollLeft = target(); place(); }); // recalage une fois les polices posées
     const onScroll = () => { tr.style.transform = `translateX(${-row.scrollLeft}px)`; if (last) last.scroll = row.scrollLeft; };
+    // appui : la pilule et son verre s'enfoncent ensemble dès le contact
+    const press = (e: PointerEvent) => {
+      const i = chips.findIndex((c) => c.contains(e.target as Node));
+      if (i < 0) return;
+      const els = [chips[i], bodies[i]];
+      els.forEach((el) => { el.style.transition = "scale 120ms cubic-bezier(0.23, 1, 0.32, 1)"; el.style.scale = "0.96"; });
+      const up = () => { els.forEach((el) => { el.style.transition = "scale 260ms cubic-bezier(0.32, 0.72, 0, 1)"; el.style.scale = ""; }); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up); };
+      window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
+    };
     row.addEventListener("scroll", onScroll, { passive: true });
+    row.addEventListener("pointerdown", press);
     const ro = new ResizeObserver(place);
     ro.observe(row);
-    return () => { cancelAnimationFrame(id); row.removeEventListener("scroll", onScroll); ro.disconnect(); bodies.forEach((b) => b.remove()); };
+    return () => {
+      cancelAnimationFrame(id); row.removeEventListener("scroll", onScroll); row.removeEventListener("pointerdown", press); ro.disconnect();
+      bodies.forEach((b) => b.remove()); svg.replaceChildren();
+    };
   }, []);
   return (
     <>
       <div aria-hidden className="hk-rail -mx-4 sm:-mx-6">
-        <div ref={track} className="hk-rail-track">
-          <span ref={glide} className="hk-chip-glide" />
-        </div>
+        <svg ref={defs} width="0" height="0" style={{ position: "absolute" }} />
+        <div ref={track} className="hk-rail-track" />
       </div>
       <nav ref={ref} aria-label={label} data-fixed className="hk-scroll hk-carousel -mx-4 -mb-2.5 px-4 pb-3 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
-        <span ref={glideDesk} aria-hidden className="hk-chip-glide hk-chip-glide-desk" />
         {children}
       </nav>
     </>

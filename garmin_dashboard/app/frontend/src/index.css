@@ -512,47 +512,40 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
 /* Rail de verre : collant comme la rangée, derrière les pilules (z 29 < 30), suit le défilement horizontal par -scrollLeft */
 .hk-rail { position: sticky; top: -8px; z-index: 29; height: 64px; margin-top: calc(-16px - env(safe-area-inset-top, 0px)); margin-bottom: -64px; pointer-events: none; overflow-x: clip; overflow-y: visible; }
 .hk-rail-track { position: absolute; left: 0; top: calc(env(safe-area-inset-top, 0px) + 16px); height: 64px; will-change: transform; }
-/* verre d'une pilule : même matériau que la barre du bas (.hk-dock-glass) */
+/* Verre d'une pilule (style Apple Santé) : clair et transparent, arête lumineuse, réfraction sur les bords, presque pas d'ombre */
 .hk-pg {
   position: absolute; left: 0; top: 0; height: 64px; border-radius: 22px; pointer-events: none;
-  background: rgba(255, 255, 255, 0.58);
-  backdrop-filter: blur(22px) saturate(190%);
+  background: rgba(255, 255, 255, 0.30);
+  backdrop-filter: blur(14px) saturate(180%); /* repli hors Chromium */
   box-shadow:
-    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.95), inset 1.5px 0 0 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 6px -1px rgba(255, 255, 255, 0.5), inset 0 0 0 1px rgba(60, 70, 110, 0.12),
-    0 14px 32px -8px rgba(20, 30, 70, 0.30), 0 2px 6px rgba(20, 30, 70, 0.10);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55), 0 1px 3px rgba(20, 30, 70, 0.06);
 }
+html[data-refract] .hk-pg { backdrop-filter: var(--pgf, blur(14px) saturate(180%)); }
+/* liseré : coin haut-gauche et bas-droit plus brillants */
 .hk-pg::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
-  background: linear-gradient(135deg, rgba(255,255,255,1), rgba(255,255,255,0) 32%, rgba(255,255,255,0) 66%, rgba(255,255,255,0.85));
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0) 35%, rgba(255,255,255,0) 65%, rgba(255,255,255,0.7));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
-.hk-pg::after {
-  content: ""; position: absolute; left: 10%; right: 10%; top: 2px; height: 42%; border-radius: 999px; pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0));
-}
-.dark .hk-pg { background: rgba(38, 38, 42, 0.55); box-shadow: inset 0 1.5px 0 0 rgba(255,255,255,0.28), inset 1.5px 0 0 0 rgba(255,255,255,0.12), inset 0 -2px 6px -1px rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.10), 0 14px 32px -8px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.4); }
-.dark .hk-pg::after { background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0)); }
-/* goutte de verre de la pilule active : même matériau que la goutte de la barre du bas (.hk-drop) */
-.hk-chip-glide {
-  position: absolute; z-index: 1; top: 0; left: 0; height: 64px; border-radius: 22px; pointer-events: none; will-change: transform;
-  background: radial-gradient(120% 90% at 30% 15%, rgba(255,255,255,0.75), rgba(255,255,255,0.18) 55%, rgba(255,255,255,0.05));
-  backdrop-filter: blur(3px) saturate(200%) brightness(1.06);
-  box-shadow: inset 0 1.5px 0 0 rgba(255,255,255,1), inset 1px 0 0 0 rgba(255,255,255,0.7), inset 0 -1.5px 3px 0 rgba(255,255,255,0.6), inset 0 0 0 1px rgba(10, 100, 216, 0.22), 0 6px 14px -4px rgba(20, 40, 110, 0.35);
-  transition: transform 380ms var(--ease-ios), width 380ms var(--ease-ios);
-}
-.dark .hk-chip-glide { background: radial-gradient(120% 90% at 30% 15%, rgba(255,255,255,0.28), rgba(255,255,255,0.07) 55%, rgba(255,255,255,0.02)); box-shadow: inset 0 1.5px 0 0 rgba(255,255,255,0.55), inset 0 0 0 1px rgba(64,156,255,0.35), 0 6px 14px -4px rgba(0,0,0,0.6); }
-.hk-chip-glide-desk { display: none; z-index: 0; }
-@media (prefers-reduced-motion: reduce) { .hk-chip-glide { transition: none; } }
-@media (prefers-reduced-transparency: reduce) { .hk-pg, .hk-chip-glide { backdrop-filter: none; } .hk-pg { background: var(--card); } }
+/* voile blanc de la pilule active (fondu au changement de pilule) */
+.hk-pg > i { position: absolute; inset: 0; border-radius: inherit; background: rgba(255, 255, 255, 0.86); opacity: 0; }
+.hk-pg[data-on] > i { opacity: 1; }
+.hk-pg[data-on] { box-shadow: inset 0 1px 0 0 #fff, inset 0 0 0 1px rgba(255, 255, 255, 0.9), 0 2px 10px rgba(20, 30, 70, 0.07); }
+.dark .hk-pg { background: rgba(40, 40, 46, 0.35); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.22), inset 0 0 0 1px rgba(255,255,255,0.10), 0 1px 3px rgba(0,0,0,0.3); }
+.dark .hk-pg::before { background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 35%, rgba(255,255,255,0) 65%, rgba(255,255,255,0.2)); }
+.dark .hk-pg > i { background: rgba(255, 255, 255, 0.16); }
+/* l'appui est géré en JS (texte + verre ensemble) */
+.hk-chip.hk-press:active { transform: none; }
+@media (prefers-reduced-transparency: reduce) { .hk-pg, html[data-refract] .hk-pg { backdrop-filter: none; background: var(--card); } }
 /* ≥ 768 px : la rangée n'est plus collante ni défilante, le verre revient dans les pilules elles-mêmes */
 @media (min-width: 768px) {
   .hk-rail { display: none; }
-  .hk-chip-glide-desk { display: block; }
-  .hk-chip { background: rgba(255, 255, 255, 0.58); backdrop-filter: blur(22px) saturate(190%); box-shadow: inset 0 1.5px 0 0 rgba(255,255,255,0.95), inset 0 0 0 1px rgba(60,70,110,0.12), 0 4px 14px -6px rgba(20,30,70,0.25); }
-  .hk-chip[aria-current="page"] { background: transparent; backdrop-filter: none; box-shadow: none; }
-  .dark .hk-chip { background: rgba(38, 38, 42, 0.55); }
+  .hk-chip { background: rgba(255, 255, 255, 0.38); backdrop-filter: blur(14px) saturate(180%); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.95), inset 0 0 0 1px rgba(255,255,255,0.55), 0 1px 3px rgba(20,30,70,0.06); }
+  .hk-chip[aria-current="page"] { background: rgba(255, 255, 255, 0.9); box-shadow: inset 0 1px 0 0 #fff, inset 0 0 0 1px rgba(255,255,255,0.9), 0 2px 10px rgba(20,30,70,0.07); }
+  .dark .hk-chip { background: rgba(40, 40, 46, 0.35); }
+  .dark .hk-chip[aria-current="page"] { background: rgba(255, 255, 255, 0.16); }
 }
 
 /* Carrousel des pilules du haut (HIG) : plein écran, marges alignées sur les cartes, aimantation sur la marge gauche */
