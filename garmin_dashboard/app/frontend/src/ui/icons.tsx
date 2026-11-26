@@ -135,6 +135,18 @@ export const MiniZones = () => (
     <rect x="21" y="10" width="4" height="14" rx="2" fill="#FF6B2C" />
   </svg>
 );
+export const MiniPlan = () => (
+  <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
+    <rect x="3.5" y="5.5" width="21" height="19" rx="5" fill="#fff" stroke="#34C759" strokeWidth="2" />
+    <path d="M3.5 11h21" stroke="#34C759" strokeWidth="2" />
+    <path d="M9.5 3.5v4M18.5 3.5v4" stroke="#34C759" strokeWidth="2.4" strokeLinecap="round" />
+    <circle cx="10" cy="16.5" r="1.6" fill="#34C759" />
+    <circle cx="14" cy="16.5" r="1.6" fill="#34C759" />
+    <circle cx="18" cy="16.5" r="1.6" fill="#34C759" />
+    <circle cx="10" cy="20.5" r="1.6" fill="#34C759" />
+    <circle cx="14" cy="20.5" r="1.6" fill="#34C759" opacity=".4" />
+  </svg>
+);
 export const MiniMedal = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
     <path d="M9 2l3 8M19 2l-3 8" stroke="#0A84FF" strokeWidth="3" strokeLinecap="round" />

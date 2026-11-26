@@ -6,7 +6,7 @@ import { addDays, fmtHM, isoDate, nf, shortDay } from "@/lib/format";
 import { PATH } from "@/lib/route";
 import { Balance, BandBars, DashBand, HourRanges, Hypnogram, LineBand, LoadChart, Ring, STAGE_COLOR } from "@/ui/charts";
 import { useHealth, usePillars } from "@/ui/data";
-import { enduranceClass, personalBand, PILLAR_TONE, type PillarStatus } from "@/ui/derive";
+import { enduranceClass, lastWith, personalBand, PILLAR_TONE, type PillarStatus } from "@/ui/derive";
 import { BigHeart, IMoon, ISun, MiniHeart, MiniPillars, MiniSleep } from "@/ui/icons";
 import { Badge, Card, Chip, ChipRow, Hero, Hr, Lbl, P, Page, Sm, Skel, Stagger, Val } from "@/ui/kit";
 import { SleepWeek } from "./Synthese";
@@ -64,7 +64,7 @@ export function Piliers() {
           <p className="m-0 mt-2.5 flex items-baseline gap-2">
             <Val size={26}>{nf(latest.hrv_weekly_avg_ms)}</Val>
             <span className="text-[15px] font-semibold">ms moy. 7 j</span>
-            <Sm className="text-[15px]">· cette nuit {nf(latest.hrv_last_night_ms)}</Sm>
+            <Sm className="text-[15px]">· dernière nuit {nf(latest.hrv_last_night_ms)}</Sm>
           </p>
           {p.band && <div className="mt-3"><DashBand values={hrv14} band={p.band} caption={`14 dernières nuits · bande = ta plage ${p.band[0]}–${p.band[1]} ms`} label="VFC des 14 dernières nuits dans ta plage personnelle" /></div>}
           <P className="mt-2.5">
@@ -222,7 +222,7 @@ function TonightCard({ s }: { s: SleepDetails }) {
 export function Sommeil() {
   const { fit, det } = useHealth();
   const series = fit?.series ?? [];
-  const latest = series[series.length - 1];
+  const latest = lastWith(series, "sleep_score") ?? series[series.length - 1];
   const s = det?.sleep ?? null;
   const band = personalBand(series, "hrv_last_night_ms", 30);
   const hrv14 = lastN(series, 14);
@@ -247,7 +247,7 @@ export function Sommeil() {
           {s && <TonightCard s={s} />}
           <Card tint="teal">
             <div className="flex items-start justify-between">
-              <div><Lbl>VFC nocturne</Lbl><Val>{nf(latest?.hrv_last_night_ms)} ms <span className="text-[14px] font-normal text-label2">cette nuit</span></Val></div>
+              <div><Lbl>VFC nocturne</Lbl><Val>{nf(latest?.hrv_last_night_ms)} ms <span className="text-[14px] font-normal text-label2">dernière nuit</span></Val></div>
               <Badge tone="teal">{latest?.hrv_status === "BALANCED" ? "Équilibrée" : latest?.hrv_status === "UNBALANCED" ? "Déséquilibrée" : latest?.hrv_status === "LOW" ? "Basse" : "—"}</Badge>
             </div>
             {band && (

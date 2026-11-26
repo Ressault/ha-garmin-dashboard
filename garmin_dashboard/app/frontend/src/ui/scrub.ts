@@ -61,7 +61,8 @@ export function useScrubNav(ref: RefObject<HTMLElement | null>, itemSelector: st
       const items = Array.from(node.querySelectorAll<HTMLAnchorElement>(itemSelector));
       if (items.length < 2) return;
       hrefs = items.map((a) => a.getAttribute("href") ?? "#/");
-      startIdx = Math.max(0, items.findIndex((a) => a.getAttribute("aria-current") === "page"));
+      startIdx = items.findIndex((a) => a.getAttribute("aria-current") === "page");
+      if (startIdx < 0) return; // pas de page courante (raccourcis de la Synthèse) : pas de glissement entre pages
       lastIdx = startIdx;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
@@ -87,4 +88,44 @@ export function useScrubNav(ref: RefObject<HTMLElement | null>, itemSelector: st
       // si le geste est en cours, les écouteurs touchmove/touchend se retirent d'eux-mêmes à la fin
     };
   }, [ref, itemSelector]);
+}
+
+const SWIPE_MIN_PX = 110; // grand balayage seulement
+const SWIPE_RATIO = 2.4; // nettement plus horizontal que vertical
+const SWIPE_MAX_MS = 800;
+const EDGE_PX = 28; // on laisse les bords à l'Android (geste retour)
+
+/**
+ * Grand balayage horizontal n'importe où sur la page : passe à l'onglet voisin de la rangée du haut.
+ * Ignoré sur les zones qui défilent ou se manipulent horizontalement (rangées, graphiques, champs, fenêtres).
+ */
+export function usePageSwipe() {
+  useEffect(() => {
+    let x0 = 0, y0 = 0, t0 = 0, ok = false;
+    const blocked = (el: EventTarget | null) =>
+      el instanceof Element && !!el.closest('.hk-scroll, [data-noswipe], dialog, input, textarea, select, canvas, .leaflet-container, .hk-tabbar, [role="slider"]');
+    const start = (e: TouchEvent) => {
+      const t = e.touches[0];
+      ok = e.touches.length === 1 && !blocked(e.target) && t.clientX > EDGE_PX && t.clientX < window.innerWidth - EDGE_PX && !document.documentElement.dataset.scrub;
+      x0 = t.clientX; y0 = t.clientY; t0 = Date.now();
+    };
+    const end = (e: TouchEvent) => {
+      if (!ok) return;
+      ok = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO || Date.now() - t0 > SWIPE_MAX_MS) return;
+      const chips = Array.from(document.querySelectorAll<HTMLAnchorElement>("nav.hk-scroll a.hk-chip"));
+      const cur = chips.findIndex((a) => a.getAttribute("aria-current") === "page");
+      if (cur < 0) return;
+      const next = chips[cur + (dx < 0 ? 1 : -1)];
+      if (next) window.location.hash = next.getAttribute("href") ?? "";
+    };
+    document.addEventListener("touchstart", start, { passive: true });
+    document.addEventListener("touchend", end, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", start);
+      document.removeEventListener("touchend", end);
+    };
+  }, []);
 }

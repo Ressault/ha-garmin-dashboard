@@ -149,7 +149,15 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
   useLayoutEffect(() => {
     const row = ref.current;
     const cur = row?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (row && cur) row.scrollLeft = Math.max(0, cur.offsetLeft - (row.clientWidth - cur.offsetWidth) / 2);
+    if (!row || !cur) return;
+    const center = () => {
+      // positions réelles à l'écran (offsetLeft dépend du parent positionné, d'où le chip collé à droite)
+      const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
+      row.scrollLeft = Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
+    };
+    center();
+    const id = requestAnimationFrame(center); // après la mise en page finale (polices, icônes)
+    return () => cancelAnimationFrame(id);
   }, []);
   return (
     <nav ref={ref} aria-label={label} className="hk-scroll -mx-4 px-4 pb-0.5 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">

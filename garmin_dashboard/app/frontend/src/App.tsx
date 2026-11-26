@@ -6,12 +6,12 @@ import { DataProvider } from "@/hooks/useQuery";
 import { FiltersProvider } from "@/lib/filters";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { routeKey, sectionOf, useRoute, type Route } from "@/lib/route";
+import { usePageSwipe } from "@/ui/scrub";
 import { Sidebar, TabBar } from "@/ui/shell";
 import Synthese from "@/views/Synthese";
 
 // Les écrans autres que la synthèse ne sont chargés qu'à la demande : démarrage plus léger.
 const ActivityDetailView = lazy(() => import("@/views/ActivityDetail"));
-const PlanView = lazy(() => import("@/views/Plan"));
 const L = {
   Piliers: lazy(() => import("@/views/Longevite").then((m) => ({ default: m.Piliers }))),
   Sommeil: lazy(() => import("@/views/Longevite").then((m) => ({ default: m.Sommeil }))),
@@ -20,6 +20,7 @@ const L = {
   Progres: lazy(() => import("@/views/Activite").then((m) => ({ default: m.Progres }))),
   Entrainement: lazy(() => import("@/views/Activite").then((m) => ({ default: m.Entrainement }))),
   Records: lazy(() => import("@/views/Activite").then((m) => ({ default: m.Records }))),
+  Programme: lazy(() => import("@/views/Programme")),
 };
 
 function View({ route }: { route: Route }) {
@@ -31,11 +32,7 @@ function View({ route }: { route: Route }) {
         </div>
       );
     case "plan":
-      return (
-        <div className="pt-4 md:pt-8">
-          <PlanView />
-        </div>
-      );
+      return <L.Programme />;
     case "piliers":
       return <L.Piliers />;
     case "sommeil":
@@ -60,6 +57,7 @@ function Shell() {
   const { theme } = useTheme();
   const listScroll = useRef(0);
   const prev = useRef<Route["name"]>(route.name);
+  usePageSwipe();
 
   // On retrouve la position de la liste en revenant d'une sortie ; sinon on remonte en haut.
   useLayoutEffect(() => {

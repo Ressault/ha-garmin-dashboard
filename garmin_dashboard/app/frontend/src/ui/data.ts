@@ -1,6 +1,6 @@
 import { useQuery } from "@/hooks/useQuery";
 import { api } from "@/lib/api";
-import { addDays, isoDate, parseDay } from "@/lib/format";
+import { parseDay } from "@/lib/format";
 import { groupOf, pillars, PILLAR_COLOR, type RunDyn } from "./derive";
 
 export const DAYS_FR = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
@@ -13,8 +13,9 @@ export function useHealth() {
 }
 
 export function useActivities() {
-  const start = isoDate(addDays(new Date(), -120));
-  return useQuery(`acts-${start}`, () => api.activities({ start, limit: 400 }));
+  // Tout l'historique depuis l'achat de la montre (2025)
+  const start = "2025-01-01";
+  return useQuery(`acts-${start}`, () => api.activities({ start, limit: 2000 }));
 }
 
 /** Dynamiques de course de la dernière sortie à pied qui en a (HRM-600). */

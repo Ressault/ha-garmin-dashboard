@@ -6,7 +6,7 @@ import { api, type ActivityListItem, type FitnessDay } from "@/lib/api";
 import { addDays, fmtClock, fmtHM, isoDate, nf, parseDay, speedDisplay } from "@/lib/format";
 import { PATH } from "@/lib/route";
 import { AreaLine, Bars, Gauge, Petals } from "@/ui/charts";
-import { byGroup, GROUP_META, GROUP_ORDER, groupOf, pct, readiness, totals, windows } from "@/ui/derive";
+import { byGroup, GROUP_META, GROUP_ORDER, groupOf, lastWith, pct, readiness, totals, windows } from "@/ui/derive";
 import { BigHeart, GROUP_ICON, MiniHeart, MiniPillars, MiniSleep, MiniTrend } from "@/ui/icons";
 import { Badge, Card, Chip, ChipRow, Delta, Hr, Lbl, P, Page, Sm, Skel, Stagger, Val } from "@/ui/kit";
 import { Avatar, ProfileDialog, useProfile } from "@/ui/profile";
@@ -289,7 +289,7 @@ export function SleepWeek({ series, href }: { series: FitnessDay[]; href?: strin
   const last = series.slice(-7);
   const vals = last.map((d) => d.sleep_score).filter((v): v is number => v != null);
   const avg = vals.length ? vals.reduce((s, x) => s + x, 0) / vals.length : null;
-  const t = last[last.length - 1];
+  const t = lastWith(last, "sleep_score") ?? last[last.length - 1];
   return (
     <Card tint="indigo" href={href}>
       <div className="flex items-baseline justify-between">
@@ -298,7 +298,7 @@ export function SleepWeek({ series, href }: { series: FitnessDay[]; href?: strin
       </div>
       {t?.sleep_score != null && (
         <Val>
-          {nf(t.sleep_score)} cette nuit{t.sleep_duration_s ? ` · ${fmtHM(t.sleep_duration_s)}` : ""}
+          {nf(t.sleep_score)} dernière nuit{t.sleep_duration_s ? ` · ${fmtHM(t.sleep_duration_s)}` : ""}
         </Val>
       )}
       <div className="mt-2.5">

@@ -21,6 +21,13 @@ export function personalBand(series: FitnessDay[], key: keyof FitnessDay, minVal
   return [Math.round(ms.mean - ms.sd), Math.round(ms.mean + ms.sd)];
 }
 
+/** Dernière ligne (parmi les `back` derniers jours) qui a une valeur pour `key` : le jour en cours est vide après minuit. */
+export function lastWith(series: FitnessDay[], key: keyof FitnessDay, back = 2): FitnessDay | null {
+  for (let i = series.length - 1; i >= Math.max(0, series.length - back); i--) if (series[i][key] != null) return series[i];
+  return null;
+}
+export const lastVal = (series: FitnessDay[], key: keyof FitnessDay, back = 2): number | null => (lastWith(series, key, back)?.[key] as number | null | undefined) ?? null;
+
 const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 
 export interface Readiness {
@@ -37,9 +44,9 @@ export function readiness(series: FitnessDay[]): Readiness | null {
   if (!today) return null;
   const hrvBand = personalBand(series, "hrv_last_night_ms", 30);
   const ms = meanSd(series.slice(-30).map((d) => d.hrv_last_night_ms).filter((v) => v != null && v > 30));
-  const hrv = today.hrv_last_night_ms;
+  const hrv = lastVal(series, "hrv_last_night_ms");
   const hrvScore = hrv != null && ms ? clamp(0.6 + ((hrv - ms.mean) / ms.sd) * 0.2) : 0.5;
-  const sleep = today.sleep_score;
+  const sleep = lastVal(series, "sleep_score");
   const sleepScore = sleep != null ? clamp(sleep / 100) : 0.5;
   const tsb = today.tsb;
   const loadScore = tsb != null ? clamp(0.8 + tsb / 50) : 0.6;

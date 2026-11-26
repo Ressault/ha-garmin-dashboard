@@ -8,28 +8,32 @@ import { PATH } from "@/lib/route";
 import { AreaLine, Bars, EffortChart, RecordChart, StackedDays, type RecordPoint } from "@/ui/charts";
 import { useActivities, useHealth } from "@/ui/data";
 import { GROUP_META, GROUP_ORDER, groupOf, pct, totals, windows, type Group } from "@/ui/derive";
-import { GROUP_ICON, IGrid, ISearch, MiniList, MiniMedal, MiniTrend, MiniZones } from "@/ui/icons";
-import { Badge, Card, Chip, ChipRow, Delta, Group as Rows, H2, Hero, Hr, Lbl, P, Page, Sm, Skel, Stagger, Title, Val } from "@/ui/kit";
+import { GROUP_ICON, IGrid, ISearch, MiniList, MiniMedal, MiniPlan, MiniTrend, MiniZones } from "@/ui/icons";
+import { Badge, Card, Chip, ChipRow, TINT, Delta, Group as Rows, H2, Hero, Hr, Lbl, P, Page, Sm, Skel, Stagger, Title, Val } from "@/ui/kit";
 
-type Cur = "activites" | "progres" | "entrainement" | "records";
-function ActChips({ current }: { current: Cur }) {
+export type Cur = "activites" | "progres" | "entrainement" | "records" | "plan";
+export function ActChips({ current }: { current: Cur }) {
   const acts = useActivities();
   const preds = useQuery("predictions-400", () => api.predictions(400));
   const effort = useQuery("effort", () => api.effort());
   const w = windows();
   const n = acts.data ? totals(acts.data.items, ...w.weekToDate).count : null;
   const half = preds.data?.latest?.time_half_s;
+  const plans = useQuery("plans", () => api.plans());
+  const goal = plans.data?.plans.find((p) => p.goal_date)?.goal_date;
+  const left = goal ? Math.ceil((parseDay(goal).getTime() - parseDay(isoDate(new Date())).getTime()) / 86400000) : null;
   return (
     <ChipRow label="Sections d'Activité">
       <Chip href={PATH.activites} current={current === "activites"} icon={<MiniList />} label="Activités" value={n != null ? `${n} cette sem.` : "—"} />
       <Chip href={PATH.progres} current={current === "progres"} icon={<MiniTrend />} label="Progrès" value={half ? `Semi ${fmtClock(half).slice(0, -3)}` : "—"} />
       <Chip href={PATH.entrainement} current={current === "entrainement"} icon={<MiniZones />} label="Entraînement" value={effort.data ? `Charge ${nf(effort.data.current)}` : "—"} />
       <Chip href={PATH.records} current={current === "records"} icon={<MiniMedal />} label="Records" value="Meilleurs efforts" />
+      <Chip href={PATH.plan} current={current === "plan"} icon={<MiniPlan />} label="Programme" value={left != null ? (left >= 0 ? `J-${left}` : "Terminé") : plans.data?.plans.length ? "En cours" : "Importer"} />
     </ChipRow>
   );
 }
 
-function Frame({ current, tint, children }: { current: Cur; tint: "red" | "purple" | "sky" | "gold"; children: React.ReactNode }) {
+export function Frame({ current, tint, children }: { current: Cur; tint: keyof typeof TINT; children: React.ReactNode }) {
   return (
     <Page tint={tint}>
       <Title>Activité</Title>
@@ -121,7 +125,7 @@ export function Activites() {
             <h2 className="m-0 text-[22px] font-bold tracking-[-0.015em]">Cette semaine</h2>
             <Sm>du {shortDay(w.week[0])} au {shortDay(w.week[1])}</Sm>
           </div>
-          <div role="group" aria-label="Filtrer par sport" className="hk-scroll -mx-[18px] mt-3 px-[18px] pb-0.5">
+          <div role="group" aria-label="Filtrer par sport" className="hk-scroll mt-3 pb-0.5">
             {FILTERS.map((g) => {
               const Icon = g === "all" ? IGrid : GROUP_ICON[g];
               return (
@@ -439,7 +443,7 @@ export function Records() {
                   </button>
                 ))}
               </div>
-              <div ref={pillsRef} role="group" aria-label="Distance" className="hk-scroll -mx-[18px] px-[18px] pb-0.5" style={{ "--sp": "18px" } as React.CSSProperties}>
+              <div ref={pillsRef} role="group" aria-label="Distance" className="hk-scroll pb-0.5">
                 {dists.map((d) => (
                   <button key={d.label} type="button" className="hk-pill hk-press" aria-pressed={cur?.label === d.label} onClick={() => setSel(d.label)}>
                     {SHORT_LABEL[d.label] ?? d.label}
@@ -527,12 +531,14 @@ export function Records() {
                 {dists.map((d, i) => {
                   const b = [...d.efforts].sort((a, c) => a.time_s - c.time_s)[0];
                   return (
-                    <button key={d.label} type="button" onClick={() => { setSel(d.label); setTab("analyse"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={`hk-press flex w-full items-center gap-3 py-2.5 text-left ${i ? "border-t border-sep" : ""}`}>
-                      <MedalDot i={0} size={28} />
-                      <span className="flex-1 text-[17px]">{d.label}</span>
-                      <span className="text-[17px] font-semibold tabular-nums">{fmtClock(b.time_s)}</span>
-                      <span className="w-[76px] text-right text-[13px] text-label2">{shortDay(b.date)}</span>
-                    </button>
+                    <div key={d.label} className={`flex items-center gap-3 ${i ? "border-t border-sep" : ""}`}>
+                      <a href={`#/activity/${b.activity_id}`} aria-label={`Ouvrir l'activité du record ${d.label}`} className="hk-press -m-2 shrink-0 p-2"><MedalDot i={0} size={28} /></a>
+                      <button type="button" onClick={() => { setSel(d.label); setTab("analyse"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hk-press flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left">
+                        <span className="flex-1 text-[17px]">{d.label}</span>
+                        <span className="text-[17px] font-semibold tabular-nums">{fmtClock(b.time_s)}</span>
+                        <span className="w-[76px] text-right text-[13px] text-label2">{shortDay(b.date)}</span>
+                      </button>
+                    </div>
                   );
                 })}
               </div>

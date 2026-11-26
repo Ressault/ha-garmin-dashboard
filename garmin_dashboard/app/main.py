@@ -62,6 +62,7 @@ LIST_COLS = (
 
 AUTO_SYNC_MINUTES = 20  # synchro légère (Body Battery, disponibilité, nouvelles sorties)
 FULL_SYNC_MINUTES = 60  # synchro complète (prédictions, seuils, historique de forme)
+HISTORY_START = date(2025, 1, 1)  # début de l'historique à charger (date d'achat de la montre)
 
 
 def _auto_sync_loop() -> None:
@@ -80,12 +81,31 @@ def _auto_sync_loop() -> None:
                     days = initial
     except Exception:
         pass
+    # Rattrapage unique de tout l'historique depuis HISTORY_START (la montre date de 2025)
+    backfill = False
+    try:
+        with db.connect() as conn:
+            done = conn.execute("SELECT value FROM profile WHERE key = 'history_backfill'").fetchone()
+        need = (date.today() - HISTORY_START).days + 1
+        if (not done or done["value"] != HISTORY_START.isoformat()) and need > days:
+            days, backfill = need, True
+    except Exception:
+        pass
     last_full = 0.0
     while True:
         try:
             if not sync.SYNC_LOCK.locked():
                 if time.time() - last_full >= FULL_SYNC_MINUTES * 60 - 60:
                     sync.run_sync(days=days)
+                    if backfill:
+                        with db.connect() as conn:
+                            conn.execute(
+                                "INSERT INTO profile(key, value) VALUES('history_backfill', ?) "
+                                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                                (HISTORY_START.isoformat(),),
+                            )
+                            conn.commit()
+                        backfill = False
                     days = 30
                     last_full = time.time()
                 else:
@@ -177,7 +197,7 @@ def get_activity_row(conn, activity_id: int):
 
 @app.post("/api/sync")
 def trigger_sync(
-    days: int = Query(30, ge=1, le=365), force: bool = Query(False)
+    days: int = Query(30, ge=1, le=1500), force: bool = Query(False)
 ) -> dict:
     """Synchro incrémentale (bloquante : renvoie le résumé à la fin)."""
     try:
@@ -204,7 +224,7 @@ def sync_status() -> dict:
 
 @app.get("/api/activities")
 def list_activities(
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=2000),
     offset: int = Query(0, ge=0),
     sport: Optional[str] = Query(None, description="filtre partiel, ex. 'running'"),
     start: Optional[str] = Query(None, description="YYYY-MM-DD"),
@@ -280,6 +300,16 @@ def save_notes(activity_id: int, body: NotesIn) -> dict:
 # ---------------------------------------------------------------------------
 
 
+# Mesures reprises du dernier jour connu quand le jour en cours est vide (champ → ancienneté maximale, en jours)
+CARRY_DAYS = {
+    "vo2max": 90, "fitness_age": 30, "chrono_age": 30, "fitness_age_target": 90,
+    "endurance_score": 60, "endurance_class": 60, "endurance_limits_json": 60,
+    "hill_score": 60, "hill_class": 60, "hill_strength": 60, "hill_endurance": 60,
+    "hrv_last_night_ms": 2, "hrv_weekly_avg_ms": 3, "hrv_status": 3,
+    "sleep_score": 2, "sleep_duration_s": 2, "resting_hr": 3, "training_status": 5,
+}
+
+
 @app.get("/api/fitness")
 def fitness(days: int = Query(90, ge=7, le=730)) -> dict:
     start = (date.today() - timedelta(days=days - 1)).isoformat()
@@ -294,6 +324,25 @@ def fitness(days: int = Query(90, ge=7, le=730)) -> dict:
             (start,),
         )]
     latest = next((r for r in reversed(rows) if r.get("ctl") is not None), None)
+    if latest:
+        # Une mesure absente du jour (VO2 max pas recalculé, nuit pas encore synchronisée, après minuit…)
+        # reprend la dernière valeur connue, tant qu'elle n'est pas trop ancienne.
+        latest = dict(latest)
+        carried: dict = {}
+        with db.connect() as conn:
+            for col, max_age in CARRY_DAYS.items():
+                if latest.get(col) is not None:
+                    continue
+                since = (date.fromisoformat(latest["date"]) - timedelta(days=max_age)).isoformat()
+                r = conn.execute(
+                    f"SELECT date, {col} AS v FROM daily_health WHERE date < ? AND date >= ? AND {col} IS NOT NULL "
+                    "ORDER BY date DESC LIMIT 1",
+                    (latest["date"], since),
+                ).fetchone()
+                if r:
+                    latest[col] = r["v"]
+                    carried[col] = r["date"]
+        latest["carried"] = carried
     with db.connect() as conn:
         tl = conn.execute(
             "SELECT date, body_battery_json FROM daily_health WHERE body_battery_json IS NOT NULL ORDER BY date DESC LIMIT 1"

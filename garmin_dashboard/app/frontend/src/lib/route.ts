@@ -50,7 +50,7 @@ export const PATH: Record<Exclude<Route["name"], "activity">, string> = {
 
 export function sectionOf(r: Route): Section {
   if (r.name === "piliers" || r.name === "sommeil" || r.name === "forme") return "longevite";
-  if (r.name === "activites" || r.name === "progres" || r.name === "entrainement" || r.name === "records" || r.name === "activity") return "activite";
+  if (r.name === "activites" || r.name === "progres" || r.name === "entrainement" || r.name === "records" || r.name === "plan" || r.name === "activity") return "activite";
   return "synthese";
 }
 
