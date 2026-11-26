@@ -135,23 +135,40 @@ export const MiniZones = () => (
     <rect x="21" y="10" width="4" height="14" rx="2" fill="#FF6B2C" />
   </svg>
 );
+/* Pictogrammes pleins façon SF Symbols (poids Semibold) : « calendar » et « trophy.fill » */
 export const MiniPlan = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
-    <rect x="3.5" y="5.5" width="21" height="19" rx="5" fill="#fff" stroke="#34C759" strokeWidth="2" />
-    <path d="M3.5 11h21" stroke="#34C759" strokeWidth="2" />
-    <path d="M9.5 3.5v4M18.5 3.5v4" stroke="#34C759" strokeWidth="2.4" strokeLinecap="round" />
-    <circle cx="10" cy="16.5" r="1.6" fill="#34C759" />
-    <circle cx="14" cy="16.5" r="1.6" fill="#34C759" />
-    <circle cx="18" cy="16.5" r="1.6" fill="#34C759" />
-    <circle cx="10" cy="20.5" r="1.6" fill="#34C759" />
-    <circle cx="14" cy="20.5" r="1.6" fill="#34C759" opacity=".4" />
+  <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
+    <defs>
+      <linearGradient id="mp-body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#4BE06E" />
+        <stop offset="1" stopColor="#30D158" />
+      </linearGradient>
+    </defs>
+    <rect x="10" y="2.5" width="3.6" height="8" rx="1.8" fill="#23A843" />
+    <rect x="20.4" y="2.5" width="3.6" height="8" rx="1.8" fill="#23A843" />
+    <rect x="3.5" y="5.5" width="27" height="25.5" rx="7.5" fill="url(#mp-body)" />
+    <path d="M3.5 13a7.5 7.5 0 0 1 7.5-7.5h12A7.5 7.5 0 0 1 30.5 13v.5h-27z" fill="#23A843" opacity=".55" />
+    <rect x="10" y="2.5" width="3.6" height="8" rx="1.8" fill="#23A843" />
+    <rect x="20.4" y="2.5" width="3.6" height="8" rx="1.8" fill="#23A843" />
+    {[[10.5, 20], [17, 20], [23.5, 20], [10.5, 26], [17, 26]].map(([x, y], i) => (
+      <circle key={i} cx={x} cy={y} r="2.1" fill="#fff" />
+    ))}
+    <circle cx="23.5" cy="26" r="2.1" fill="#fff" opacity=".5" />
   </svg>
 );
 export const MiniMedal = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
-    <path d="M9 2l3 8M19 2l-3 8" stroke="#0A84FF" strokeWidth="3" strokeLinecap="round" />
-    <circle cx="14" cy="17" r="8" fill="#F5C33B" />
-    <text x="14" y="21" fontSize="8" fontWeight="800" textAnchor="middle" fill="#7A5600">PR</text>
+  <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
+    <defs>
+      <linearGradient id="mm-gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#FFC247" />
+        <stop offset="1" stopColor="#FF9F0A" />
+      </linearGradient>
+    </defs>
+    <path d="M9.5 7.5H7A2 2 0 0 0 5 9.5c0 4.2 2.6 6.6 6.2 7.2M24.5 7.5H27a2 2 0 0 1 2 2c0 4.2-2.6 6.6-6.2 7.2" fill="none" stroke="url(#mm-gold)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M8.5 4.5h17v10.2c0 5-3.8 8.8-8.5 8.8s-8.5-3.8-8.5-8.8z" fill="url(#mm-gold)" />
+    <rect x="15" y="22" width="4" height="4.5" fill="url(#mm-gold)" />
+    <rect x="9.5" y="26" width="15" height="4.5" rx="2.25" fill="url(#mm-gold)" />
+    <path d="M12.2 7.5v7c0 2.2 1 3.9 2.6 4.8" fill="none" stroke="#fff" strokeOpacity=".4" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 
