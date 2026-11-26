@@ -1,5 +1,5 @@
 name: Garmin Dashboard
-version: "1.1.29"
+version: "1.1.30"
 slug: garmin_dashboard
 description: Suivi sportif et santé Garmin (remplace Strava Premium), accessible 24 h/24
 url: https://github.com/Ressault/ha-garmin-dashboard

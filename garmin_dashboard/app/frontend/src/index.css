@@ -367,21 +367,20 @@ a.hk-card:focus-visible, a.hk-press:focus-visible, button.hk-press:focus-visible
   height: 64px; padding: 0 18px 0 14px; border-radius: 22px;
   background: var(--chip); border: 1px solid var(--sep); color: var(--foreground);
 }
-/* Pilules du haut : même verre que la barre du bas (flou 22 px, saturation 190 %, reflets spéculaires, ombre) */
-.hk-chip {
-  position: relative; z-index: 1; border-color: transparent; background: rgba(255, 255, 255, 0.70);
-  backdrop-filter: blur(22px) saturate(190%);
-  box-shadow:
-    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.95), inset 1.5px 0 0 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 6px -1px rgba(255, 255, 255, 0.5), inset 0 0 0 1px rgba(60, 70, 110, 0.12),
-    0 10px 16px -10px rgba(20, 30, 70, 0.30), 0 2px 6px rgba(20, 30, 70, 0.10); /* ombre contenue dans les 16 px de marge : jamais rognée */
+/* Pilules du haut : inactive = verre fumé ; le flou est porté par ::before (isolation) pour traverser le rail défilant */
+.hk-chip { position: relative; z-index: 1; isolation: isolate; border: 1px solid rgb(255 255 255 / 0.5); background: transparent; box-shadow: none; }
+.hk-chip::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: rgb(218 220 228 / 0.72); backdrop-filter: blur(24px) saturate(180%);
 }
-.hk-chip[aria-current="page"] { background: transparent; box-shadow: none; backdrop-filter: none; color: var(--foreground); }
+.hk-chip[aria-current="page"] { border-color: transparent; color: var(--foreground); }
+.hk-chip[aria-current="page"]::before { display: none; }
 .hk-chip:not([aria-current="page"]) { color: color-mix(in srgb, var(--foreground) 78%, transparent); }
 .hk-chip:not([aria-current="page"]) .text-label2 { opacity: 0.85; }
 .hk-chip[aria-current="page"] .text-label2 { color: color-mix(in srgb, var(--foreground) 72%, transparent); }
-.dark .hk-chip { background: rgb(255 255 255 / 0.07); border-color: rgb(255 255 255 / 0.1); box-shadow: 0 4px 16px rgb(0 0 0 / 0.25); }
-.dark .hk-chip[aria-current="page"] { background: transparent; border-color: transparent; box-shadow: none; }
+.dark .hk-chip { border-color: rgb(255 255 255 / 0.1); }
+.dark .hk-chip::before { background: rgb(60 62 72 / 0.72); }
+.dark .hk-chip[aria-current="page"] { border-color: transparent; }
 .hk-scroll { position: relative; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
   /* fondu sur les bords où il reste du contenu à faire défiler (--fl / --fr posés par useEdgeFades) */
   -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / calc(1 - var(--fl, 0))) 0, #000 28px, #000 calc(100% - 28px), rgb(0 0 0 / calc(1 - var(--fr, 0))) 100%);
@@ -521,10 +520,8 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
 /* reflet glissant sous l'onglet actif de la rangée du haut */
 .hk-chip-glide {
   position: absolute; z-index: 0; top: calc(env(safe-area-inset-top, 0px) + 16px); left: 0; height: 64px; border-radius: 22px; pointer-events: none;
-  border: 1px solid transparent;
-  background: radial-gradient(120% 90% at 30% 15%, rgba(255,255,255,0.75), rgba(255,255,255,0.18) 55%, rgba(255,255,255,0.05)), rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(22px) saturate(190%);
-  box-shadow: inset 0 1.5px 0 0 rgba(255,255,255,1), inset 1px 0 0 0 rgba(255,255,255,0.7), inset 0 -1.5px 3px 0 rgba(255,255,255,0.6), inset 0 0 0 1px rgba(10, 100, 216, 0.22), 0 6px 14px -4px rgba(20, 40, 110, 0.35);
+  background: rgb(255 255 255 / 0.96); border: 1.5px solid #fff;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
   transition: transform 380ms var(--ease-ios), width 380ms var(--ease-ios);
 }
 .dark .hk-chip-glide { background: rgb(255 255 255 / 0.18); border-color: rgb(255 255 255 / 0.22); box-shadow: 0 8px 24px rgb(0 0 0 / 0.4); }
@@ -537,7 +534,7 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
    Le remplissage haut/bas est compensé par des marges négatives : la mise en page au repos ne bouge pas. */
 nav.hk-carousel {
   position: sticky; top: -8px; z-index: 30;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 16px); padding-bottom: 16px; margin-top: calc(-16px - env(safe-area-inset-top, 0px)); margin-bottom: -14px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 16px); padding-bottom: 32px; margin-top: calc(-16px - env(safe-area-inset-top, 0px)); margin-bottom: -30px;
   background: transparent; backdrop-filter: none; border: 0; box-shadow: none;
   pointer-events: none; /* le conteneur ne couvre rien : seules les pilules captent le toucher */
 }
