@@ -67,6 +67,13 @@ function Shell() {
   const leaving = leave && doneId !== id ? leave : null;
   usePageSwipe();
   useEdgeFades();
+  // page défilée : le bandeau de pilules collant passe en verre translucide
+  useEffect(() => {
+    const on = () => { document.documentElement.toggleAttribute("data-scrolled", window.scrollY > 10); };
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
   useEffect(() => {
     if (!leave) return;
     const t = window.setTimeout(() => setDoneId(id), 900); // filet de sécurité si l'animation ne se termine pas

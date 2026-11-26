@@ -523,6 +523,22 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
 /* Carrousel des pilules du haut (HIG) : plein écran, marges alignées sur les cartes, aimantation sur la marge gauche */
 .hk-carousel { scroll-snap-type: x mandatory; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; -webkit-mask-image: none; mask-image: none; }
 .hk-carousel > a.hk-chip { scroll-snap-align: center; }
+/* Bandeau collant (iOS) : reste en haut de l'écran pendant le défilement vertical ; verre translucide dès que la page est défilée.
+   Le remplissage haut/bas est compensé par des marges négatives : la mise en page au repos ne bouge pas. */
+nav.hk-carousel {
+  position: sticky; top: 0; z-index: 30;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px); padding-bottom: 10px; margin-top: calc(-10px - env(safe-area-inset-top, 0px)); margin-bottom: -8px;
+  background-color: transparent; box-shadow: 0 10px 14px -14px transparent;
+  transition: background-color 200ms ease, box-shadow 200ms ease, backdrop-filter 200ms ease;
+}
+html[data-scrolled] nav.hk-carousel {
+  background-color: rgb(242 242 247 / 0.82);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 14px -14px rgb(0 0 0 / 0.28);
+}
+.dark html[data-scrolled] nav.hk-carousel, html.dark[data-scrolled] nav.hk-carousel { background-color: rgb(0 0 0 / 0.72); }
+@media (min-width: 768px) { nav.hk-carousel { position: static; margin-top: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; } }
+@media (prefers-reduced-transparency: reduce) { html[data-scrolled] nav.hk-carousel { backdrop-filter: none; background-color: var(--background); } }
 @media (min-width: 768px) { .hk-carousel { scroll-snap-type: none; } }
 /* visuel de pilule : boîte unique de 34 × 34 px pour toutes les pilules (Synthèse, Longévité, Activité) */
 .hk-chip-ico { display: flex; flex: none; align-items: center; justify-content: center; width: 34px; height: 34px; }
