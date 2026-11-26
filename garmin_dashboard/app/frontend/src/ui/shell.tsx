@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Moon, RefreshCw, Sun } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,15 +15,156 @@ const TABS = [
   { key: "activite", label: "Activité", href: PATH.activites, Icon: IGrid },
 ] as const;
 
-/** Barre d'onglets flottante et translucide (mobile) */
+/* ---------- Liquid Glass : réfraction réelle ----------
+ * Approche : `backdrop-filter: url(#filtre)` avec un SVG <feDisplacementMap>. Une carte de déplacement (générée en
+ * canvas à la taille exacte de la barre) décale les pixels de l'arrière-plan le long du bord de la capsule : au bord,
+ * le fond défile « plié » comme dans un verre épais, au centre il reste net. Trois déplacements légèrement
+ * différents (R, V, B) donnent la dispersion chromatique. Le tout est suivi d'un flou et d'une saturation.
+ * Moteur : Chromium (Chrome, WebView Android, app HA). Ailleurs : flou classique (repli), voir index.css. */
+function refractionMap(w: number, h: number, bezel: number): string {
+  const k = 2; // résolution ×2
+  const c = document.createElement("canvas");
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  const ctx = c.getContext("2d");
+  if (!ctx) return "";
+  const img = ctx.createImageData(c.width, c.height);
+  const r = h / 2;
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < c.width; x++) {
+      const px = (x + 0.5) / k, py = (y + 0.5) / k;
+      const qx = Math.min(Math.max(px, r), w - r);
+      const dx = px - qx, dy = py - r;
+      const dist = Math.hypot(dx, dy);
+      const d = r - dist; // profondeur sous le bord
+      let R = 128, G = 128;
+      if (d >= 0 && d < bezel && dist > 0) {
+        const t = 1 - d / bezel;
+        const m = Math.pow(t, 2.2); // profil convexe : fort au bord, nul vers l'intérieur
+        R = 128 - (dx / dist) * m * 127; // on lit vers l'intérieur : le bord montre le fond « replié »
+        G = 128 - (dy / dist) * m * 127;
+      }
+      const i = (y * c.width + x) * 4;
+      img.data[i] = R; img.data[i + 1] = G; img.data[i + 2] = 128; img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c.toDataURL("image/png");
+}
+
+function Refraction({ id, w, h, bezel, scale, blur }: { id: string; w: number; h: number; bezel: number; scale: number; blur: number }) {
+  const map = useMemo(() => (w > 0 && h > 0 ? refractionMap(w, h, bezel) : ""), [w, h, bezel]);
+  if (!map) return null;
+  const ch = (r: number, g: number, b: number) => `${r} 0 0 0 0  0 ${g} 0 0 0  0 0 ${b} 0 0  0 0 0 1 0`;
+  return (
+    <filter id={id} x="0" y="0" width={w} height={h} filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+      <feImage href={map} x="0" y="0" width={w} height={h} preserveAspectRatio="none" result="map" />
+      <feDisplacementMap in="SourceGraphic" in2="map" scale={scale * 0.9} xChannelSelector="R" yChannelSelector="G" result="dr" />
+      <feColorMatrix in="dr" type="matrix" values={ch(1, 0, 0)} result="r" />
+      <feDisplacementMap in="SourceGraphic" in2="map" scale={scale} xChannelSelector="R" yChannelSelector="G" result="dg" />
+      <feColorMatrix in="dg" type="matrix" values={ch(0, 1, 0)} result="g" />
+      <feDisplacementMap in="SourceGraphic" in2="map" scale={scale * 1.12} xChannelSelector="R" yChannelSelector="G" result="db" />
+      <feColorMatrix in="db" type="matrix" values={ch(0, 0, 1)} result="b" />
+      <feBlend in="r" in2="g" mode="screen" result="rg" />
+      <feBlend in="rg" in2="b" mode="screen" result="rgb" />
+      <feGaussianBlur in="rgb" stdDeviation={blur} result="bl" />
+      <feColorMatrix in="bl" type="saturate" values="1.7" />
+    </filter>
+  );
+}
+
+/** Ressort amorti (réponse 0,4 s, amortissement 0,8 : valeurs Apple) intégré à pas fixe, interruptible */
+class Spring {
+  x: number; v = 0; to: number;
+  constructor(x: number) { this.x = x; this.to = x; }
+  step(dt: number) {
+    const w = (2 * Math.PI) / 0.4, k = w * w, c = 2 * 0.8 * w;
+    for (let t = 0; t < dt; t += 1 / 240) {
+      const h = Math.min(1 / 240, dt - t);
+      this.v += (-k * (this.x - this.to) - c * this.v) * h;
+      this.x += this.v * h;
+    }
+  }
+  get rest() { return Math.abs(this.x - this.to) < 0.05 && Math.abs(this.v) < 0.5; }
+}
+
+const TAB_W = 92, TAB_STEP = 94;
+
+/** Barre d'onglets flottante en verre épais (mobile) : réfraction, reflets, goutte de verre à ressort */
 export function TabBar({ route }: { route: Route }) {
   const sec = sectionOf(route);
   const ref = useRef<HTMLElement>(null);
+  const drop = useRef<HTMLSpanElement>(null);
   useScrubNav(ref, "a.hk-tab");
   const idx = Math.max(0, TABS.findIndex((t) => t.key === sec));
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const sx = useRef(new Spring(idx * TAB_STEP));
+  const sp = useRef(new Spring(1)); // échelle d'appui : la goutte « gonfle » sous le doigt
+  const raf = useRef(0);
+  const last = useRef(0);
+
+  // Moteur de réfraction disponible ? (Chromium hors iOS, transparence autorisée)
+  useLayoutEffect(() => {
+    const ua = navigator.userAgent;
+    const ok = /Chrome\//.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua) && CSS.supports("backdrop-filter", "blur(1px)") && !matchMedia("(prefers-reduced-transparency: reduce)").matches;
+    if (ok) document.documentElement.dataset.refract = "1";
+    return () => { delete document.documentElement.dataset.refract; };
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const m = () => setSize({ w: Math.round(el.offsetWidth), h: Math.round(el.offsetHeight) });
+    m();
+    const ro = new ResizeObserver(m);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const paint = () => {
+    const d = drop.current;
+    if (!d) return;
+    const v = sx.current.v;
+    const stretch = Math.min(Math.abs(v) / 1900, 0.24); // goutte étirée dans le sens du mouvement
+    const press = sp.current.x;
+    d.style.transform = `translate3d(${sx.current.x}px,0,0) scale(${(press * (1 + stretch)).toFixed(4)},${(press * (1 - stretch * 0.55)).toFixed(4)})`;
+  };
+  const tick = (t: number) => {
+    const dt = Math.min((t - last.current) / 1000 || 1 / 60, 1 / 20);
+    last.current = t;
+    sx.current.step(dt); sp.current.step(dt);
+    paint();
+    if (sx.current.rest && sp.current.rest) { sx.current.x = sx.current.to; sx.current.v = 0; sp.current.x = sp.current.to; sp.current.v = 0; paint(); raf.current = 0; return; }
+    raf.current = requestAnimationFrame(tick);
+  };
+  const run = () => { if (!raf.current) { last.current = performance.now(); raf.current = requestAnimationFrame(tick); } };
+
+  useLayoutEffect(() => {
+    sx.current.to = idx * TAB_STEP;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { sx.current.x = sx.current.to; sx.current.v = 0; paint(); } else run();
+  }, [idx]);
+  useLayoutEffect(() => { paint(); return () => cancelAnimationFrame(raf.current); }, []);
+
+  const press = (v: number) => () => { sp.current.to = v; run(); };
+  const dropH = Math.max(0, size.h - 10);
+
   return (
-    <nav ref={ref} aria-label="Navigation principale" className="hk-tabbar md:hidden">
-      <span aria-hidden className="hk-glide" style={{ transform: `translateX(${idx * 94}px)` }} />
+    <nav
+      ref={ref}
+      aria-label="Navigation principale"
+      className="hk-tabbar md:hidden"
+      onPointerDown={press(1.1)}
+      onPointerUp={press(1)}
+      onPointerCancel={press(1)}
+      onPointerLeave={press(1)}
+    >
+      <svg aria-hidden width="0" height="0" style={{ position: "absolute" }}>
+        <defs>
+          <Refraction id="hk-refract" w={size.w} h={size.h} bezel={22} scale={30} blur={3.2} />
+          <Refraction id="hk-lens" w={TAB_W} h={dropH} bezel={17} scale={20} blur={0.6} />
+        </defs>
+      </svg>
+      <span aria-hidden className="hk-dock-glass" />
+      <span aria-hidden ref={drop} className="hk-drop" />
       {TABS.map(({ key, label, href, Icon }) => (
         <a key={key} href={href} className="hk-tab hk-press" aria-current={sec === key ? "page" : undefined}>
           <span style={{ color: sec === key ? "#0A84FF" : "currentColor" }}>
