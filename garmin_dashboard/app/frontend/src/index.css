@@ -367,23 +367,49 @@ a.hk-card:focus-visible, a.hk-press:focus-visible, button.hk-press:focus-visible
   height: 56px; padding: 0 14px 0 10px; border-radius: 18px;
   background: var(--chip); border: 1px solid var(--sep); color: var(--foreground);
 }
-.hk-chip[aria-current="page"] { background: var(--card); border-color: rgb(10 132 255 / 0.45); box-shadow: 0 4px 14px -6px rgb(10 100 216 / 0.35); }
-.hk-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+.hk-chip { position: relative; z-index: 1; background: color-mix(in srgb, var(--card) 55%, transparent); backdrop-filter: blur(12px) saturate(160%); -webkit-backdrop-filter: blur(12px) saturate(160%); }
+.hk-chip[aria-current="page"] { background: transparent; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hk-scroll { position: relative; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+  /* fondu sur les bords où il reste du contenu à faire défiler (--fl / --fr posés par useEdgeFades) */
+  -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / calc(1 - var(--fl, 0))) 0, #000 28px, #000 calc(100% - 28px), rgb(0 0 0 / calc(1 - var(--fr, 0))) 100%);
+  mask-image: linear-gradient(90deg, rgb(0 0 0 / calc(1 - var(--fl, 0))) 0, #000 28px, #000 calc(100% - 28px), rgb(0 0 0 / calc(1 - var(--fr, 0))) 100%); }
 .hk-scroll::-webkit-scrollbar { display: none; }
 
 .hk-pill { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 36px; padding: 0 13px 0 11px; border-radius: 999px; border: 1px solid var(--sep); background: var(--card); color: var(--foreground); font-size: 14px; font-weight: 600; transition: background-color 160ms ease, color 160ms ease; }
+.hk-pill > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hk-pill[aria-pressed="true"] { background: var(--foreground); color: var(--background); border-color: var(--foreground); }
 
+/* Liquid Glass : fond teinté translucide, flou + saturation, reflet spéculaire haut/gauche, ombre douce */
+:root { --glass-bg: rgba(255, 255, 255, 0.72); --glass-hi: rgba(255, 255, 255, 0.85); --glass-edge: rgba(255, 255, 255, 0.45); --glass-shadow: rgba(0, 0, 0, 0.08); --spring: linear(0, 0.062, 0.202, 0.366, 0.526, 0.664, 0.776, 0.861, 0.922, 0.964, 0.99, 1.005, 1.012, 1.015, 1.015, 1.013, 1.01, 1.008, 1.006, 1.004, 1.002, 1.001, 1.001, 1, 1, 1, 1, 1, 1); }
+.dark { --glass-bg: rgba(44, 44, 46, 0.66); --glass-hi: rgba(255, 255, 255, 0.16); --glass-edge: rgba(255, 255, 255, 0.08); --glass-shadow: rgba(0, 0, 0, 0.45); }
+.hk-glass {
+  background: var(--glass-bg); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 0 var(--glass-hi), inset 0 0 0 1px var(--glass-edge), 0 8px 24px -4px var(--glass-shadow);
+}
 .hk-tabbar {
   position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%);
-  z-index: 40; display: flex; gap: 2px; padding: 5px; border-radius: 999px;
-  background: var(--bar); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgb(255 255 255 / 0.6); box-shadow: 0 10px 30px -8px rgb(20 30 70 / 0.28);
+  z-index: 40; display: flex; gap: 2px; padding: 5px; border-radius: 999px; isolation: isolate;
+  background: var(--glass-bg); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 0 var(--glass-hi), inset 0 0 0 1px var(--glass-edge), 0 8px 24px -4px var(--glass-shadow);
 }
-.dark .hk-tabbar { border-color: rgb(255 255 255 / 0.08); box-shadow: 0 10px 30px -8px rgb(0 0 0 / 0.6); }
-.hk-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 92px; padding: 7px 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--foreground); transition: background-color 200ms var(--ease-out-strong), color 200ms ease; }
-.hk-tab[aria-current="page"] { background: var(--fill); color: #0a64d8; }
+.hk-tab { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 92px; padding: 7px 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--foreground); transition: color 200ms ease; }
+.hk-tab[aria-current="page"] { color: #0a64d8; }
 .dark .hk-tab[aria-current="page"] { color: #409cff; }
+/* pilule active : un seul reflet de verre qui glisse d'un onglet à l'autre (ressort, interruptible) */
+.hk-glide {
+  position: absolute; z-index: 0; top: 5px; bottom: 5px; left: 5px; width: 92px; border-radius: 999px; pointer-events: none;
+  background: rgba(255, 255, 255, 0.55); box-shadow: inset 0 1px 0 0 var(--glass-hi), inset 0 0 0 1px var(--glass-edge), 0 2px 10px -2px var(--glass-shadow);
+  transition: transform 700ms var(--spring), width 700ms var(--spring);
+}
+.dark .hk-glide { background: rgba(255, 255, 255, 0.14); }
+.hk-chip-glide {
+  position: absolute; z-index: 0; top: 0; left: 0; height: 56px; border-radius: 18px; pointer-events: none;
+  background: var(--glass-bg); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 0 var(--glass-hi), inset 0 0 0 1px rgb(10 132 255 / 0.4), 0 8px 24px -4px var(--glass-shadow);
+  transition: transform 700ms var(--spring), width 700ms var(--spring);
+}
+@media (prefers-reduced-motion: reduce) { .hk-glide, .hk-chip-glide { transition: none; } }
+@media (prefers-reduced-transparency: reduce) { .hk-glass, .hk-glide, .hk-chip-glide, .hk-chip { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--card); } }
 
 .hk-side {
   background: var(--bar); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -415,7 +441,7 @@ a.hk-card:focus-visible, a.hk-press:focus-visible, button.hk-press:focus-visible
   a.hk-card:active, a.hk-press:active, button.hk-press:active { transform: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .hk-tabbar, .hk-side { backdrop-filter: none; background: var(--card); }
+  .hk-tabbar, .hk-side { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--card); }
 }
 .hk-badge { background: var(--bb); color: var(--bf); }
 .b-green { --bb: #e3f7e8; --bf: #1f7a35; } .b-blue { --bb: #e1eeff; --bf: #0a55b8; } .b-orange { --bb: #fff0db; --bf: #a24600; }

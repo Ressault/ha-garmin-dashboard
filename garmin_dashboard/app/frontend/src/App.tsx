@@ -6,7 +6,7 @@ import { DataProvider } from "@/hooks/useQuery";
 import { FiltersProvider } from "@/lib/filters";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { routeKey, sectionOf, useRoute, type Route } from "@/lib/route";
-import { usePageSwipe } from "@/ui/scrub";
+import { useEdgeFades, usePageSwipe } from "@/ui/scrub";
 import { Sidebar, TabBar } from "@/ui/shell";
 import Synthese from "@/views/Synthese";
 
@@ -58,6 +58,7 @@ function Shell() {
   const listScroll = useRef(0);
   const prev = useRef<Route["name"]>(route.name);
   usePageSwipe();
+  useEdgeFades();
 
   // On retrouve la position de la liste en revenant d'une sortie ; sinon on remonte en haut.
   useLayoutEffect(() => {

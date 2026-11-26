@@ -142,25 +142,50 @@ export function Chip({ href, icon, label, value, current }: { href: string; icon
     </a>
   );
 }
+// Position (dans le contenu de la rangée) de la pilule active de la page précédente : la rangée est recréée
+// à chaque page, on garde donc le point de départ pour faire glisser le reflet vers le nouvel onglet.
+let lastGlide: { x: number; w: number; t: number } | null = null;
+
 export function ChipRow({ children, label }: { children: ReactNode; label: string }) {
   const ref = useRef<HTMLElement>(null);
+  const glide = useRef<HTMLSpanElement>(null);
   useScrubNav(ref, "a.hk-chip");
-  // La rangée est recréée à chaque page : on garde l'onglet actif visible
+  // La rangée est recréée à chaque page : on garde l'onglet actif visible et on fait glisser le reflet
   useLayoutEffect(() => {
-    const row = ref.current;
+    const row = ref.current, g = glide.current;
     const cur = row?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!row || !cur) return;
-    const center = () => {
-      // positions réelles à l'écran (offsetLeft dépend du parent positionné, d'où le chip collé à droite)
+    if (!row || !cur || !g) return;
+    const rect = () => {
       const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
+      return { r, c, x: c.left - r.left + row.scrollLeft, w: c.width };
+    };
+    // centrage sur positions réelles à l'écran (offsetLeft dépend du parent positionné)
+    const center = () => {
+      const { r, c } = rect();
       row.scrollLeft = Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
     };
     center();
-    const id = requestAnimationFrame(center); // après la mise en page finale (polices, icônes)
+    const to = rect();
+    const from = lastGlide && performance.now() - lastGlide.t < 4000 ? lastGlide : null;
+    g.style.transition = "none";
+    g.style.width = `${from ? from.w : to.w}px`;
+    g.style.transform = `translateX(${from ? from.x : to.x}px)`;
+    void g.offsetWidth;
+    g.style.transition = "";
+    g.style.width = `${to.w}px`;
+    g.style.transform = `translateX(${to.x}px)`;
+    lastGlide = { x: to.x, w: to.w, t: performance.now() };
+    const id = requestAnimationFrame(() => {
+      center();
+      const n = rect();
+      g.style.transform = `translateX(${n.x}px)`;
+      lastGlide = { x: n.x, w: n.w, t: performance.now() };
+    });
     return () => cancelAnimationFrame(id);
   }, []);
   return (
     <nav ref={ref} aria-label={label} className="hk-scroll -mx-4 px-4 pb-0.5 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
+      <span ref={glide} aria-hidden className="hk-chip-glide" />
       {children}
     </nav>
   );

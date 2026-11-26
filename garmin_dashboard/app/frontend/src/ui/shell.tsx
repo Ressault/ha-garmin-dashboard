@@ -20,8 +20,10 @@ export function TabBar({ route }: { route: Route }) {
   const sec = sectionOf(route);
   const ref = useRef<HTMLElement>(null);
   useScrubNav(ref, "a.hk-tab");
+  const idx = Math.max(0, TABS.findIndex((t) => t.key === sec));
   return (
     <nav ref={ref} aria-label="Navigation principale" className="hk-tabbar md:hidden">
+      <span aria-hidden className="hk-glide" style={{ transform: `translateX(${idx * 94}px)` }} />
       {TABS.map(({ key, label, href, Icon }) => (
         <a key={key} href={href} className="hk-tab hk-press" aria-current={sec === key ? "page" : undefined}>
           <span style={{ color: sec === key ? "#0A84FF" : "currentColor" }}>

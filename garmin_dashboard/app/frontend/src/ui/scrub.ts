@@ -129,3 +129,29 @@ export function usePageSwipe() {
     };
   }, []);
 }
+
+/** Pose --fl / --fr (0 ou 1) sur chaque rangée .hk-scroll : le fondu n'apparaît que du côté où il reste du contenu. */
+export function useEdgeFades() {
+  useEffect(() => {
+    const upd = (el: HTMLElement) => {
+      const max = el.scrollWidth - el.clientWidth;
+      el.style.setProperty("--fl", el.scrollLeft > 2 ? "1" : "0");
+      el.style.setProperty("--fr", max > 2 && el.scrollLeft < max - 2 ? "1" : "0");
+    };
+    const all = () => document.querySelectorAll<HTMLElement>(".hk-scroll").forEach(upd);
+    const onScroll = (e: Event) => e.target instanceof HTMLElement && e.target.classList.contains("hk-scroll") && upd(e.target);
+    let raf = 0;
+    const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(all); };
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("resize", later);
+    const mo = new MutationObserver(later);
+    mo.observe(document.body, { childList: true, subtree: true });
+    all();
+    return () => {
+      document.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", later);
+      mo.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+}

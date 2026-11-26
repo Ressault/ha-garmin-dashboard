@@ -133,7 +133,7 @@ function Body({ d, onDeleted }: { d: PlanDetail; onDeleted: () => void }) {
   return (
     <>
       <Card tint="green">
-        <Lbl>{d.name}</Lbl>
+        <Lbl className="block truncate">{d.name}</Lbl>
         <Val size={28}>{left != null ? (left >= 0 ? `J-${left}` : "Terminé") : `${d.weeks.length} semaines`}</Val>
         <Sm>{d.goal_name ? `${d.goal_name}${d.goal_date ? ` · ${parseDay(d.goal_date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : ""}` : `${d.sessions} séances · ${nf(d.total_km, 0)} km`}</Sm>
         <Hr />
@@ -202,9 +202,9 @@ export default function Programme() {
           </>
         ) : (
           <>
-            <div className="flex items-center gap-2 overflow-x-auto">
+            <div className="flex flex-wrap items-center gap-2">
               {plans.map((p) => (
-                <button key={p.id} aria-pressed={p.id === id} onClick={() => setSel(p.id)} className="hk-pill">{p.name}</button>
+                <button key={p.id} aria-pressed={p.id === id} onClick={() => setSel(p.id)} className="hk-pill max-w-[62%]" title={p.name}><span>{p.name}</span></button>
               ))}
               {!adding && <button className="ml-auto h-9 shrink-0 text-[15px] font-medium text-[color:var(--tint)]" onClick={() => setAdding(true)}>Importer…</button>}
             </div>
