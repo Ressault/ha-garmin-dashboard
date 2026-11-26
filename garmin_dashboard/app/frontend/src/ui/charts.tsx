@@ -1,9 +1,46 @@
-import { useId, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 /* Graphiques SVG légers, dessinés comme dans l'app Santé d'Apple.
    Les éléments neutres (grilles, textes) suivent le thème via les classes fill-label2 / stroke-sep. */
 
 const T = "fill-label2";
+
+/** Largeur réelle du graphique : le dessin suit la carte (texte toujours à 11 px), 322 px tant qu'il n'est pas mesuré */
+function useW(def = 322): [RefObject<SVGSVGElement>, number] {
+  const ref = useRef<SVGSVGElement>(null);
+  const [w, setW] = useState(def);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const m = () => { const x = Math.round(el.getBoundingClientRect().width); if (x > 0) setW((o) => (o === x ? o : x)); };
+    m();
+    const ro = new ResizeObserver(m);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w];
+}
+
+/** Marge droite des courbes : le point final (rayon 5 + liseré 2) reste entier dans le cadre */
+const PAD = 8;
+
+/** Courbe lissée sans dépassement (monotone, Fritsch-Carlson) : ne crée jamais de valeur entre deux points */
+function smoothPath(pts: [number, number][]): string {
+  const n = pts.length;
+  if (n === 0) return "";
+  if (n < 3) return pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const dx: number[] = [], m: number[] = [];
+  for (let i = 0; i < n - 1; i++) { dx.push(pts[i + 1][0] - pts[i][0]); m.push(dx[i] ? (pts[i + 1][1] - pts[i][1]) / dx[i] : 0); }
+  const t: number[] = [m[0]];
+  for (let i = 1; i < n - 1; i++) t.push(m[i - 1] * m[i] <= 0 ? 0 : (3 * (dx[i - 1] + dx[i])) / ((2 * dx[i] + dx[i - 1]) / m[i - 1] + (dx[i] + 2 * dx[i - 1]) / m[i]));
+  t.push(m[n - 2]);
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], h = dx[i] / 3;
+    d += ` C${(x0 + h).toFixed(1)},${(y0 + t[i] * h).toFixed(1)} ${(x1 - h).toFixed(1)},${(y1 - t[i + 1] * h).toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+  return d;
+}
 
 /* ---------- Jauge semi-circulaire (préparation 0-10) ---------- */
 export function Gauge({ value, max = 10, color = "#3E8EF7", size = 150, label }: { value: number | null; max?: number; color?: string; size?: number; label: string }) {
@@ -86,10 +123,10 @@ export function Petals({ items, size = 176, label }: { items: Petal[]; size?: nu
 
 /* ---------- Barres verticales (7 nuits, km par semaine, charge…) ---------- */
 export function Bars({ items, max, color, light, height = 96, unit, label }: { items: { label: string; value: number | null; strong?: boolean }[]; max?: number; color: string; light: string; height?: number; unit?: string; label: string }) {
-  const W = 322, base = height - 24, step = W / items.length;
+  const [ref, W] = useW(), base = height - 24, step = W / items.length;
   const mx = max ?? Math.max(1, ...items.map((i) => i.value ?? 0));
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} role="img" aria-label={label}>
+    <svg ref={ref} width="100%" height={height} viewBox={`0 0 ${W} ${height}`} role="img" aria-label={label}>
       {items.map((it, i) => {
         const h = it.value ? (it.value / mx) * (base - 18) : 0;
         const x = i * step + step / 2 - 11;
@@ -114,37 +151,37 @@ export function Bars({ items, max, color, light, height = 96, unit, label }: { i
 
 /* ---------- Barres verticales avec plage personnelle (VFC) ---------- */
 export function BandBars({ values, band, lo, hi, labels, color, light, bandColor, bandText, label }: { values: (number | null)[]; band: [number, number]; lo: number; hi: number; labels: [string, string, string]; color: string; light: string; bandColor: string; bandText: string; label: string }) {
-  const W = 322, H = 100, step = W / Math.max(values.length, 1);
-  const y = (v: number) => H - ((v - lo) / (hi - lo)) * H;
+  const [ref, W] = useW(), H = 100, top = 18, step = W / Math.max(values.length, 1);
+  const y = (v: number) => top + H - ((v - lo) / (hi - lo)) * H;
   return (
-    <svg width="100%" height="132" viewBox="0 0 322 132" role="img" aria-label={label}>
-      <rect x="0" y={y(band[1])} width={W} height={y(band[0]) - y(band[1])} rx="6" fill={bandColor} />
-      <text x={W - 4} y={y(band[1]) - 5} fontSize="11" fontWeight="600" textAnchor="end" fill={color}>
+    <svg ref={ref} width="100%" height="150" viewBox={`0 0 ${W} 150`} role="img" aria-label={label}>
+      <text x={W} y="11" fontSize="11" fontWeight="600" textAnchor="end" fill={color}>
         {bandText}
       </text>
+      <rect x="0" y={y(band[1])} width={W} height={y(band[0]) - y(band[1])} rx="6" fill={bandColor} />
       {values.map((v, i) => {
         if (v == null) return null;
-        const yy = Math.max(4, y(v));
+        const yy = Math.max(top + 4, y(v));
         const last = i === values.length - 1;
         const inb = v >= band[0] && v <= band[1];
-        return <rect key={i} x={i * step + step * 0.3} y={yy} width={step * 0.4} height={H - yy} rx="4.5" fill={last ? color : inb ? color : light} opacity={last ? 1 : inb ? 0.6 : 1} />;
+        return <rect key={i} x={i * step + step * 0.3} y={yy} width={step * 0.4} height={top + H - yy} rx="4.5" fill={last ? color : inb ? color : light} opacity={last ? 1 : inb ? 0.6 : 1} />;
       })}
-      <line x1="0" y1={H + 0.5} x2={W} y2={H + 0.5} className="stroke-sep" />
-      <text x="0" y="118" fontSize="11" className={T}>{labels[0]}</text>
-      <text x={W / 2} y="118" fontSize="11" textAnchor="middle" className={T}>{labels[1]}</text>
-      <text x={W} y="118" fontSize="11" textAnchor="end" className={T}>{labels[2]}</text>
+      <line x1="0" y1={top + H + 0.5} x2={W} y2={top + H + 0.5} className="stroke-sep" />
+      <text x="0" y="136" fontSize="11" className={T}>{labels[0]}</text>
+      <text x={W / 2} y="136" fontSize="11" textAnchor="middle" className={T}>{labels[1]}</text>
+      <text x={W} y="136" fontSize="11" textAnchor="end" className={T}>{labels[2]}</text>
     </svg>
   );
 }
 
 /* ---------- Tirets dans une bande (VFC des piliers) ---------- */
 export function DashBand({ values, band, lo = 40, hi = 75, caption, label }: { values: (number | null)[]; band: [number, number]; lo?: number; hi?: number; caption: string; label: string }) {
-  const H = 64, W = 322, step = W / Math.max(values.length, 1);
-  const y = (v: number) => H - ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * H;
+  const [ref, W] = useW(), H = 64, step = W / Math.max(values.length, 1);
+  const y = (v: number) => 5 + (H - 10) - ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * (H - 10);
   return (
-    <svg width="100%" height="86" viewBox="0 0 322 86" role="img" aria-label={label}>
+    <svg ref={ref} width="100%" height="86" viewBox={`0 0 ${W} 86`} role="img" aria-label={label}>
       <rect x="0" y={y(band[1])} width={W} height={y(band[0]) - y(band[1])} rx="8" fill="#3E8EF7" fillOpacity=".12" />
-      {values.map((v, i) => v != null && <rect key={i} x={i * step + 3} y={y(v) - 3} width={step - 6} height="6" rx="3" fill="#3E8EF7" opacity={v >= band[0] && v <= band[1] ? 1 : 0.4} />)}
+      {values.map((v, i) => v != null && <rect key={i} x={i * step + 3} y={y(v) - 5} width={step - 6} height="10" rx="5" fill={v < band[0] ? "#FF9F0A" : v > band[1] ? "#64B5FF" : "#0A84FF"} />)}
       <text x="0" y="82" fontSize="11" className={T}>{caption}</text>
     </svg>
   );
@@ -154,7 +191,7 @@ const pathOf = (pts: [number, number][]) => pts.map(([x, y], i) => `${i ? "L" : 
 
 /* ---------- Forme / fatigue en haut, fraîcheur en bas ---------- */
 export function LoadChart({ ctl, atl, tsb, labels }: { ctl: (number | null)[]; atl: (number | null)[]; tsb: (number | null)[]; labels: [string, string] }) {
-  const W = 322, n = Math.max(ctl.length, 2);
+  const [ref, W] = useW(), n = Math.max(ctl.length, 2);
   const top = [...ctl, ...atl].filter((v): v is number => v != null);
   const lo1 = Math.min(...top, 50) - 5, hi1 = Math.max(...top, 100) + 5;
   const X = (i: number) => (i * W) / (n - 1);
@@ -164,7 +201,7 @@ export function LoadChart({ ctl, atl, tsb, labels }: { ctl: (number | null)[]; a
   const Y2 = (v: number) => 96 + 66 - ((v - lo2) / (hi2 - lo2)) * 66;
   const line = (arr: (number | null)[], Y: (v: number) => number) => pathOf(arr.map((v, i) => (v == null ? null : [X(i), Y(v)])).filter(Boolean) as [number, number][]);
   return (
-    <svg width="100%" height="190" viewBox="0 0 322 190" role="img" aria-label="Forme et fatigue en haut, fraîcheur en bas">
+    <svg ref={ref} width="100%" height="190" viewBox={`0 0 ${W} 190`} role="img" aria-label="Forme et fatigue en haut, fraîcheur en bas">
       <path d={line(atl, Y1)} fill="none" stroke="#FF6B5E" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
       <path d={line(ctl, Y1)} fill="none" stroke="#3E62FF" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
       <rect x="0" y={Y2(-10)} width={W} height={Y2(-30) - Y2(-10)} fill="#34C759" fillOpacity=".14" />
@@ -180,13 +217,13 @@ export function LoadChart({ ctl, atl, tsb, labels }: { ctl: (number | null)[]; a
 /* ---------- Courbe avec aire dégradée (Body Battery, condition physique) ---------- */
 export function AreaLine({ points, xMax, yMin, yMax, color, height = 92, xLabels, label, dots }: { points: [number, number][]; xMax: number; yMin: number; yMax: number; color: string; height?: number; xLabels: { x: number; t: string }[]; label: string; dots?: boolean }) {
   const id = useId().replace(/:/g, "");
-  const W = 322, H = height - 22;
-  const xy = points.map(([x, v]) => [(x / xMax) * W, 4 + (H - 4) - ((v - yMin) / (yMax - yMin)) * (H - 4)] as [number, number]);
+  const [ref, W] = useW(), H = height - 22;
+  const xy = points.map(([x, v]) => [(x / xMax) * (W - PAD), 8 + (H - 8) - ((v - yMin) / (yMax - yMin)) * (H - 8)] as [number, number]);
   if (!xy.length) return null;
-  const line = pathOf(xy);
+  const line = smoothPath(xy);
   const last = xy[xy.length - 1];
   return (
-    <svg width="100%" height={height} viewBox={`0 0 322 ${height}`} role="img" aria-label={label}>
+    <svg ref={ref} width="100%" height={height} viewBox={`0 0 ${W} ${height}`} role="img" aria-label={label}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={color} stopOpacity=".3" />
@@ -198,7 +235,7 @@ export function AreaLine({ points, xMax, yMin, yMax, color, height = 92, xLabels
       {dots && xy.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="2.2" fill={color} />)}
       <circle cx={last[0]} cy={last[1]} r="5" fill={color} className="stroke-card" strokeWidth="2" />
       {xLabels.map((l, i) => (
-        <text key={i} x={(l.x / xMax) * W} y={height - 4} fontSize="11" textAnchor={i === 0 ? "start" : i === xLabels.length - 1 ? "end" : "middle"} className={T}>
+        <text key={i} x={i === xLabels.length - 1 ? W : (l.x / xMax) * (W - PAD)} y={height - 4} fontSize="11" textAnchor={i === 0 ? "start" : i === xLabels.length - 1 ? "end" : "middle"} className={T}>
           {l.t}
         </text>
       ))}
@@ -208,29 +245,30 @@ export function AreaLine({ points, xMax, yMin, yMax, color, height = 92, xLabels
 
 /* ---------- Courbe avec plage personnelle (FC au repos) ---------- */
 export function LineBand({ values, band, lo, hi, color, bandText, labels, label }: { values: (number | null)[]; band: [number, number]; lo: number; hi: number; color: string; bandText: string; labels: [string, string]; label: string }) {
-  const W = 322, H = 90, n = Math.max(values.length, 2);
-  const y = (v: number) => 8 + H - ((v - lo) / (hi - lo)) * H;
-  const pts = values.map((v, i) => (v == null ? null : ([(i * W) / (n - 1), y(v)] as [number, number]))).filter(Boolean) as [number, number][];
+  const [ref, W] = useW(), H = 90, n = Math.max(values.length, 2);
+  const y = (v: number) => 24 + H - ((v - lo) / (hi - lo)) * H;
+  const pv = values.map((v, i) => (v == null ? null : { v, p: [(i * (W - PAD)) / (n - 1), y(v)] as [number, number] })).filter(Boolean) as { v: number; p: [number, number] }[];
+  const pts = pv.map((q) => q.p);
   const last = pts[pts.length - 1];
   return (
-    <svg width="100%" height="124" viewBox="0 0 322 124" role="img" aria-label={label}>
+    <svg ref={ref} width="100%" height="140" viewBox={`0 0 ${W} 140`} role="img" aria-label={label}>
+      <text x={W} y="11" fontSize="11" fontWeight="600" textAnchor="end" fill={color}>{bandText}</text>
       <rect x="0" y={y(band[1])} width={W} height={y(band[0]) - y(band[1])} rx="6" fill={color} fillOpacity=".12" />
-      <text x="4" y={y(band[1]) - 4} fontSize="11" fontWeight="600" fill={color}>{bandText}</text>
-      <path d={pathOf(pts)} fill="none" stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-      {pts.map(([x, yy], i) => <circle key={i} cx={x} cy={yy} r="2.2" fill={color} />)}
+      <path d={smoothPath(pts)} fill="none" stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+      {pv.map((q, i) => (q.v < band[0] || q.v > band[1]) && <circle key={i} cx={q.p[0]} cy={q.p[1]} r="3" fill={color} className="stroke-card" strokeWidth="1.5" />)}
       {last && <circle cx={last[0]} cy={last[1]} r="5" fill={color} className="stroke-card" strokeWidth="2" />}
-      <text x="0" y="118" fontSize="11" className={T}>{labels[0]}</text>
-      <text x={W} y="118" fontSize="11" textAnchor="end" className={T}>{labels[1]}</text>
+      <text x="0" y="134" fontSize="11" className={T}>{labels[0]}</text>
+      <text x={W} y="134" fontSize="11" textAnchor="end" className={T}>{labels[1]}</text>
     </svg>
   );
 }
 
 /* ---------- Temps par jour, empilé par sport ---------- */
 export function StackedDays({ days, max = 100, label }: { days: { label: string; strong?: boolean; parts: { color: string; v: number }[] }[]; max?: number; label: string }) {
-  const W = 322, H = 96, step = W / days.length;
+  const [ref, W] = useW(), H = 96, step = W / days.length;
   const mx = Math.max(max, ...days.map((d) => d.parts.reduce((s, p) => s + p.v, 0)));
   return (
-    <svg width="100%" height="124" viewBox="0 0 322 124" role="img" aria-label={label}>
+    <svg ref={ref} width="100%" height="124" viewBox={`0 0 ${W} 124`} role="img" aria-label={label}>
       {days.map((d, i) => {
         const x = i * step + step / 2 - 12;
         let base = H + 4;
@@ -257,10 +295,10 @@ export function StackedDays({ days, max = 100, label }: { days: { label: string;
 const STAGE_ROW = { awake: 0, rem: 1, light: 2, deep: 3 } as const;
 export const STAGE_COLOR = { awake: "#FF836B", rem: "#2EB8D6", light: "#3E62FF", deep: "#3A2FA8" } as const;
 export function Hypnogram({ levels, total, start, end }: { levels: [number, number, keyof typeof STAGE_ROW][]; total: number; start: string; end: string }) {
-  const W = 180, rowh = 22;
+  const [ref, W] = useW(180), rowh = 22;
   let prev: number | null = null;
   return (
-    <svg width="100%" height="104" viewBox={`0 0 ${W} 104`} role="img" aria-label={`Phases de sommeil au fil de la nuit, de ${start} à ${end}`}>
+    <svg ref={ref} width="100%" height="104" viewBox={`0 0 ${W} 104`} role="img" aria-label={`Phases de sommeil au fil de la nuit, de ${start} à ${end}`}>
       {[0, 1, 2, 3].map((i) => <line key={i} x1="0" y1={i * rowh + 11} x2={W} y2={i * rowh + 11} className="stroke-sep" strokeDasharray="1 3" />)}
       {levels.map(([a, b, st], i) => {
         const x = (a / total) * W, w = ((b - a) / total) * W, lv = STAGE_ROW[st], c = STAGE_COLOR[st];
@@ -281,12 +319,13 @@ export function Hypnogram({ levels, total, start, end }: { levels: [number, numb
 
 /* ---------- FC heure par heure (min-max) ---------- */
 export function HourRanges({ hours, label }: { hours: ([number, number] | null)[]; label: string }) {
-  const lo = 40, hi = Math.max(170, ...hours.map((h) => (h ? h[1] + 5 : 0))), H = 110, W = 322, step = W / 24;
+  const lo = 40, hi = Math.max(170, ...hours.map((h) => (h ? h[1] + 5 : 0))), H = 110;
+  const [ref, W] = useW(), step = W / 24;
   const y = (v: number) => 8 + H - ((v - lo) / (hi - lo)) * H;
   let peak = -1, peakV = 0;
   hours.forEach((h, i) => h && h[1] > peakV && ((peak = i), (peakV = h[1])));
   return (
-    <svg width="100%" height="148" viewBox="0 0 322 148" role="img" aria-label={label}>
+    <svg ref={ref} width="100%" height="148" viewBox={`0 0 ${W} 148`} role="img" aria-label={label}>
       {[60, 100, 140].map((v) => (
         <g key={v}>
           <line x1="0" y1={y(v)} x2={W} y2={y(v)} className="stroke-sep" />
@@ -304,19 +343,19 @@ export function HourRanges({ hours, label }: { hours: ([number, number] | null)[
 
 /* ---------- Effort cumulé de la semaine vs fourchette habituelle ---------- */
 export function EffortChart({ current, previous, lo, hi }: { current: number[]; previous: number[]; lo: number[] | null; hi: number[] | null }) {
-  const W = 322, H = 120;
+  const [ref, W] = useW(), H = 120;
   const mx = Math.max(100, ...current, ...previous, ...(hi ?? [])) * 1.05;
-  const X = (i: number) => (i * W) / 6, Y = (v: number) => 6 + H - (v / mx) * H;
+  const X = (i: number) => (i * (W - PAD)) / 6, Y = (v: number) => 8 + H - (v / mx) * H;
   const band = lo && hi ? `${pathOf(hi.map((v, i) => [X(i), Y(v)]))} L${pathOf(lo.map((v, i) => [X(i), Y(v)] as [number, number]).reverse()).slice(1)} Z` : null;
   const last = current.length - 1;
   return (
-    <svg width="100%" height="150" viewBox="0 0 322 150" role="img" aria-label="Effort cumulé cette semaine comparé à la semaine dernière et à ta fourchette habituelle">
+    <svg ref={ref} width="100%" height="150" viewBox={`0 0 ${W} 150`} role="img" aria-label="Effort cumulé cette semaine comparé à la semaine dernière et à ta fourchette habituelle">
       {band && <path d={band} fill="#3E8EF7" fillOpacity=".12" />}
-      <path d={pathOf(previous.map((v, i) => [X(i), Y(v)]))} fill="none" className="stroke-label2" strokeOpacity=".5" strokeWidth="2" strokeDasharray="4 4" />
-      {current.length > 0 && <path d={pathOf(current.map((v, i) => [X(i), Y(v)]))} fill="none" stroke="#0A84FF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+      <path d={smoothPath(previous.map((v, i) => [X(i), Y(v)]))} fill="none" className="stroke-label2" strokeOpacity=".7" strokeWidth="2" strokeDasharray="4 4" />
+      {current.length > 0 && <path d={smoothPath(current.map((v, i) => [X(i), Y(v)]))} fill="none" stroke="#0A84FF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
       {last >= 0 && <circle cx={X(last)} cy={Y(current[last])} r="5.5" fill="#0A84FF" className="stroke-card" strokeWidth="2" />}
       {["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."].map((d, i) => (
-        <text key={d} x={X(i)} y="146" fontSize="11" textAnchor={i === 0 ? "start" : i === 6 ? "end" : "middle"} className={T}>{d}</text>
+        <text key={d} x={i === 6 ? W : X(i)} y="146" fontSize="11" textAnchor={i === 0 ? "start" : i === 6 ? "end" : "middle"} className={T}>{d}</text>
       ))}
     </svg>
   );

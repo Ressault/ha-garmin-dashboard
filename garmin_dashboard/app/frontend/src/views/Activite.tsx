@@ -284,9 +284,9 @@ export function Entrainement() {
             <div className="flex items-center justify-between"><Lbl>Effort relatif · cette semaine</Lbl><Badge tone={e.status === "above" ? "orange" : e.status === "below" ? "gray" : "green"}>{statusTxt}</Badge></div>
             <p className="m-0 mt-1.5 flex items-baseline gap-2"><Val size={30}>{nf(e.current)}</Val>{lo != null && hi != null && <Sm className="text-[15px]">habituel : {nf(lo)}–{nf(hi)}</Sm>}</p>
             <div className="mt-2.5"><EffortChart current={e.cumulative.current} previous={e.cumulative.previous} lo={e.typical.lo} hi={e.typical.hi} /></div>
-            <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[12px] text-label2">
+            <div className="flex flex-nowrap gap-x-3 whitespace-nowrap text-[12px] text-label2">
               <span><span aria-hidden className="mr-1.5 inline-block h-[3px] w-3.5 rounded bg-[#0A84FF] align-middle" />cette semaine</span>
-              <span><span aria-hidden className="mr-1.5 inline-block w-3.5 border-t-2 border-dashed border-label2 align-middle opacity-60" />semaine dernière ({nf(e.previous_total)})</span>
+              <span><span aria-hidden className="mr-1.5 inline-block w-3.5 border-t-2 border-dashed border-label2 align-middle opacity-80" />sem. passée {nf(e.previous_total)}</span>
               <span><span aria-hidden className="mr-1.5 inline-block h-2.5 w-3 rounded-sm bg-[#3E8EF7]/15 align-middle" />habituel</span>
             </div>
           </Card>

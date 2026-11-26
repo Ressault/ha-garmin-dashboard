@@ -200,8 +200,8 @@ function TonightCard({ s }: { s: SleepDetails }) {
         {b0 != null && <text x={X(b0)} y="20" fontSize="12" fontWeight="600" fill="#5E6BFF">Coucher {minToClock(b0)} – {minToClock(b1 ?? b0 + 50)}</text>}
         <text x={Math.min(X(wake), 322)} y="20" fontSize="12" fontWeight="600" fill="#E07A00" textAnchor="end">Réveil ≈ {minToClock(wake)}</text>
         <circle cx={Math.min(X(wake), 315)} cy="41" r="7" fill="#FF9F0A" className="stroke-card" strokeWidth="2.5" />
-        {[["22:00", 22 * 60], ["00:00", 0], ["04:00", 240], ["08:00", 480]].map(([t, m], i) => (
-          <text key={i} x={i === 3 ? 322 : X(Number(m))} y="72" fontSize="11" textAnchor={i === 0 ? "start" : i === 3 ? "end" : "middle"} className="fill-label2">{t}</text>
+        {[["22:00", 22 * 60], ["00:00", 0], ["02:00", 120], ["04:00", 240], ["06:00", 360], ["08:00", 480]].map(([t, m], i) => (
+          <text key={i} x={i === 5 ? 322 : X(Number(m))} y="72" fontSize="11" textAnchor={i === 0 ? "start" : i === 5 ? "end" : "middle"} className="fill-label2">{t}</text>
         ))}
       </svg>
       <div className="mt-1 grid grid-cols-3 gap-2">
