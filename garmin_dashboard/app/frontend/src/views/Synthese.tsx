@@ -5,7 +5,7 @@ import { useQuery } from "@/hooks/useQuery";
 import { api, type ActivityListItem, type FitnessDay } from "@/lib/api";
 import { addDays, fmtClock, fmtHM, isoDate, nf, parseDay, speedDisplay } from "@/lib/format";
 import { PATH } from "@/lib/route";
-import { AreaLine, Bars, Gauge, Petals } from "@/ui/charts";
+import { Bars, Gauge, LevelBars } from "@/ui/charts";
 import { byGroup, GROUP_META, GROUP_ORDER, groupOf, lastWith, pct, readiness, totals, windows } from "@/ui/derive";
 import { BigHeart, GROUP_ICON, MiniHeart, MiniPillars, MiniSleep, MiniTrend } from "@/ui/icons";
 import { Badge, Card, Chip, ChipRow, Delta, Hr, Lbl, P, Page, Sm, Skel, Stagger, Val } from "@/ui/kit";
@@ -182,40 +182,56 @@ function VolumeCard({ acts }: { acts: ActivityListItem[] }) {
   const now = byGroup(acts, ...w.last7);
   const prev = byGroup(acts, ...w.prev7);
   const tn = totals(acts, ...w.last7), tp = totals(acts, ...w.prev7);
-  const items = GROUP_ORDER.map((g) => {
-    const Icon = GROUP_ICON[g];
-    return { now: now[g].secs, prev: prev[g].secs, color: GROUP_META[g].color, icon: <Icon size={24} />, label: GROUP_META[g].label };
-  });
-  const aria = `Temps par sport sur 7 jours : ${items.map((i) => `${i.label} ${fmtHM(i.now)}`).join(", ")} ; formes pâles = 7 jours avant`;
+  const rows = GROUP_ORDER.map((g) => ({ g, now: now[g].secs, prev: prev[g].secs })).filter((r) => r.now > 0 || r.prev > 0).sort((x, y) => y.now - x.now || y.prev - x.prev);
+  const mx = Math.max(1, ...rows.map((r) => Math.max(r.now, r.prev)));
   const dt = tn.secs - tp.secs;
+  const dk = pct(tn.km, tp.km);
   return (
     <Card href={PATH.activites}>
       <div className="flex items-baseline justify-between">
         <Lbl more>Volume · 7 derniers jours</Lbl>
         <Sm>vs 7 jours avant</Sm>
       </div>
-      <div className="mt-1.5 flex items-center gap-2.5">
-        <div className="-ml-2 shrink-0">
-          <Petals items={items} label={aria} />
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        <div>
+          <Sm>Temps</Sm>
+          <Val>{fmtHM(tn.secs)}</Val>
+          <Delta value={dt} text={`${dt > 0 ? "+" : "−"}${fmtHM(Math.abs(dt))}`} />
         </div>
-        <div className="flex flex-1 flex-col gap-3">
-          <div>
-            <Sm>Temps total</Sm>
-            <Val>{fmtHM(tn.secs)}</Val>
-            <Delta value={dt} text={`${dt > 0 ? "+" : "−"}${fmtHM(Math.abs(dt))}`} />
-          </div>
-          <div>
-            <Sm>Distance</Sm>
-            <Val>{nf(tn.km, 1)} km</Val>
-            <Delta value={pct(tn.km, tp.km)} text={`${(pct(tn.km, tp.km) ?? 0) > 0 ? "+" : "−"}${nf(Math.abs(pct(tn.km, tp.km) ?? 0))} %`} />
-          </div>
-          <div>
-            <Sm>Activités</Sm>
-            <Val>{tn.count}</Val>
-            <Delta value={tn.count - tp.count} text={`${tn.count - tp.count > 0 ? "+" : "−"}${Math.abs(tn.count - tp.count)}`} />
-          </div>
+        <div>
+          <Sm>Distance</Sm>
+          <Val>{nf(tn.km, 1)} km</Val>
+          <Delta value={dk} text={`${(dk ?? 0) > 0 ? "+" : "−"}${nf(Math.abs(dk ?? 0))} %`} />
+        </div>
+        <div>
+          <Sm>Activités</Sm>
+          <Val>{tn.count}</Val>
+          <Delta value={tn.count - tp.count} text={`${tn.count - tp.count > 0 ? "+" : "−"}${Math.abs(tn.count - tp.count)}`} />
         </div>
       </div>
+      {rows.length > 0 && (
+        <>
+          <Hr />
+          <ul className="m-0 flex list-none flex-col gap-3 p-0" aria-label="Temps par sport sur 7 jours ; le trait = les 7 jours d'avant">
+            {rows.map(({ g, now: n, prev: p }) => {
+              const Icon = GROUP_ICON[g], c = GROUP_META[g].color;
+              return (
+                <li key={g} className="grid grid-cols-[28px_1fr_auto] items-center gap-x-3">
+                  <span className="flex size-7 items-center justify-center rounded-[8px]" style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}><Icon size={17} /></span>
+                  <span className="min-w-0">
+                    <span className="block text-[14px] leading-tight text-label2">{GROUP_META[g].label}</span>
+                    <span className="relative mt-1 block h-2 rounded-full bg-fill2">
+                      <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.max(n ? 3 : 0, (n / mx) * 100)}%`, background: c }} />
+                      {p > 0 && <span className="absolute -top-[3px] -bottom-[3px] w-[2px] -translate-x-1/2 rounded bg-foreground/40 shadow-[0_0_0_1.5px_var(--card)]" style={{ left: `${(p / mx) * 100}%` }} />}
+                    </span>
+                  </span>
+                  <span className="text-right text-[16px] font-semibold tabular-nums">{n ? fmtHM(n) : "—"}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
     </Card>
   );
 }
@@ -268,17 +284,17 @@ function BodyBattery({ latest, points }: { latest: FitnessDay; points: [number, 
           <Val size={34}>{latest.body_battery_now != null ? nf(latest.body_battery_now) : "—"}</Val>
         </div>
         <div className="text-right">
-          <Sm>Recharge cette nuit</Sm>
+          <Sm><span aria-hidden className="mr-1 inline-block size-2 rounded-full bg-[var(--sys-teal)] align-[1px]" />Recharge cette nuit</Sm>
           <Val size={17} style={{ color: "#0E7C93" }}>
             {latest.body_battery_charged != null ? `+${nf(latest.body_battery_charged)}` : "—"}
           </Val>
-          <Sm className="mt-1">Dépensé aujourd'hui</Sm>
+          <Sm className="mt-1"><span aria-hidden className="mr-1 inline-block size-2 rounded-full bg-[var(--sys-teal)] align-[1px] opacity-35" />Dépensé aujourd'hui</Sm>
           <Val size={17}>{latest.body_battery_drained != null ? `−${nf(latest.body_battery_drained)}` : "—"}</Val>
         </div>
       </div>
       {points.length > 1 && (
         <div className="mt-1.5">
-          <AreaLine points={points} xMax={1440} yMin={0} yMax={100} color="var(--sys-teal)" xLabels={[{ x: 0, t: "0 h" }, { x: 720, t: "12 h" }, { x: 1440, t: "24 h" }]} label="Body Battery de la journée" />
+          <LevelBars points={points} color="var(--sys-teal)" label="Body Battery heure par heure : barre pleine quand il se recharge, pâle quand il se dépense" />
         </div>
       )}
     </Card>

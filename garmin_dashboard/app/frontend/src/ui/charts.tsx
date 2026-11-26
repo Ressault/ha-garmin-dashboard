@@ -189,27 +189,73 @@ export function DashBand({ values, band, lo = 40, hi = 75, caption, label }: { v
 
 const pathOf = (pts: [number, number][]) => pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 
-/* ---------- Forme / fatigue en haut, fraîcheur en bas ---------- */
+/* ---------- Charge : forme et fatigue en courbes, fraîcheur en barres autour de zéro ---------- */
 export function LoadChart({ ctl, atl, tsb, labels }: { ctl: (number | null)[]; atl: (number | null)[]; tsb: (number | null)[]; labels: [string, string] }) {
-  const [ref, W] = useW(), n = Math.max(ctl.length, 2);
+  const [ref, W] = useW();
+  const n = Math.max(ctl.length, 2), G = 30, PW = W - G; // gouttière droite pour les graduations
+  const X = (i: number) => 4 + (i * (PW - 12)) / (n - 1);
   const top = [...ctl, ...atl].filter((v): v is number => v != null);
-  const lo1 = Math.min(...top, 50) - 5, hi1 = Math.max(...top, 100) + 5;
-  const X = (i: number) => (i * W) / (n - 1);
-  const Y1 = (v: number) => 80 - ((v - lo1) / (hi1 - lo1)) * 80;
+  const lo1 = Math.floor((Math.min(...top, 50) - 5) / 10) * 10, hi1 = Math.ceil((Math.max(...top, 100) + 5) / 10) * 10;
+  const Y1 = (v: number) => 8 + 92 - ((v - lo1) / (hi1 - lo1)) * 92;
   const tv = tsb.filter((v): v is number => v != null);
-  const lo2 = Math.min(-40, ...tv) - 5, hi2 = Math.max(15, ...tv) + 3;
-  const Y2 = (v: number) => 96 + 66 - ((v - lo2) / (hi2 - lo2)) * 66;
-  const line = (arr: (number | null)[], Y: (v: number) => number) => pathOf(arr.map((v, i) => (v == null ? null : [X(i), Y(v)])).filter(Boolean) as [number, number][]);
+  const lo2 = Math.min(-40, ...tv) - 2, hi2 = Math.max(15, ...tv) + 2;
+  const Y2 = (v: number) => 140 + 64 - ((v - lo2) / (hi2 - lo2)) * 64;
+  const pts = (arr: (number | null)[]) => arr.map((v, i) => (v == null ? null : ([X(i), Y1(v)] as [number, number]))).filter(Boolean) as [number, number][];
+  const pc = pts(ctl), pa = pts(atl);
+  const bw = Math.max(2, ((PW - 12) / n) * 0.62);
+  const tsbColor = (v: number) => (v < -30 ? "var(--sys-orange)" : v <= -10 ? "var(--sys-green)" : v > 5 ? "var(--sys-blue)" : "var(--label3)");
+  const mid = (lo1 + hi1) / 2;
   return (
-    <svg ref={ref} width="100%" height="190" viewBox={`0 0 ${W} 190`} role="img" aria-label="Forme et fatigue en haut, fraîcheur en bas">
-      <path d={line(atl, Y1)} fill="none" stroke="var(--sys-red)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-      <path d={line(ctl, Y1)} fill="none" stroke="var(--sys-indigo)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-      <rect x="0" y={Y2(-10)} width={W} height={Y2(-30) - Y2(-10)} fill="var(--sys-green)" fillOpacity=".14" />
-      <text x="4" y={Y2(-10) - 4} fontSize="11" fill="var(--sys-green)">zone de progression</text>
-      <line x1="0" y1={Y2(0)} x2={W} y2={Y2(0)} className="stroke-sep" strokeDasharray="3 4" />
-      <path d={line(tsb, Y2)} fill="none" stroke="var(--sys-green)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-      <text x="0" y="184" fontSize="11" className={T}>{labels[0]}</text>
-      <text x={W} y="184" fontSize="11" textAnchor="end" className={T}>{labels[1]}</text>
+    <svg ref={ref} width="100%" height="232" viewBox={`0 0 ${W} 232`} role="img" aria-label="Forme et fatigue en courbes, fraîcheur en barres autour de zéro">
+      {[hi1, mid, lo1].map((v) => (
+        <g key={v}>
+          <line x1="0" x2={PW} y1={Y1(v)} y2={Y1(v)} className="stroke-sep" />
+          <text x={W} y={Y1(v) + 4} fontSize="11" textAnchor="end" className={T}>{Math.round(v)}</text>
+        </g>
+      ))}
+      <path d={smoothPath(pa)} fill="none" stroke="var(--sys-pink)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity=".85" />
+      <path d={smoothPath(pc)} fill="none" stroke="var(--sys-blue)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+      {pa.length > 0 && <circle cx={pa[pa.length - 1][0]} cy={pa[pa.length - 1][1]} r="4" fill="var(--sys-pink)" className="stroke-card" strokeWidth="2" />}
+      {pc.length > 0 && <circle cx={pc[pc.length - 1][0]} cy={pc[pc.length - 1][1]} r="5" fill="var(--sys-blue)" className="stroke-card" strokeWidth="2" />}
+      <text x="0" y="128" fontSize="12" fontWeight="600" className="fill-foreground">Fraîcheur</text>
+      <text x={PW} y="128" fontSize="11" textAnchor="end" fill="var(--sys-green)">■ zone de progression (−10 à −30)</text>
+      <rect x="0" y={Y2(-10)} width={PW} height={Y2(-30) - Y2(-10)} rx="4" fill="var(--sys-green)" fillOpacity=".1" />
+      <line x1="0" x2={PW} y1={Y2(0)} y2={Y2(0)} className="stroke-sep" />
+      <text x={W} y={Y2(0) + 4} fontSize="11" textAnchor="end" className={T}>0</text>
+      {tsb.map((v, i) => {
+        if (v == null) return null;
+        const y0 = Y2(0), y1 = Y2(v);
+        return <rect key={i} x={X(i) - bw / 2} y={Math.min(y0, y1)} width={bw} height={Math.max(Math.abs(y1 - y0), 1.5)} rx={Math.min(bw / 2, 2)} fill={tsbColor(v)} />;
+      })}
+      <text x="0" y="228" fontSize="11" className={T}>{labels[0]}</text>
+      <text x={PW} y="228" fontSize="11" textAnchor="end" className={T}>{labels[1]}</text>
+    </svg>
+  );
+}
+
+/* ---------- Niveau heure par heure (Body Battery) : barre pleine = l'heure recharge, pâle = elle dépense ---------- */
+export function LevelBars({ points, color, label }: { points: [number, number][]; color: string; label: string }) {
+  const [ref, W] = useW();
+  const H = 84, step = W / 24, bw = Math.max(4, step * 0.58);
+  const hours: (number | null)[] = Array.from({ length: 24 }, (_, h) => {
+    const inH = points.filter(([m]) => m >= h * 60 && m < (h + 1) * 60);
+    return inH.length ? inH[inH.length - 1][1] : null;
+  });
+  let prev: number | null = points.length ? points[0][1] : null;
+  return (
+    <svg ref={ref} width="100%" height={H + 22} viewBox={`0 0 ${W} ${H + 22}`} role="img" aria-label={label}>
+      {[50, 100].map((v) => <line key={v} x1="0" x2={W} y1={H - (v / 100) * (H - 4)} y2={H - (v / 100) * (H - 4)} className="stroke-sep" strokeDasharray={v === 50 ? "2 4" : undefined} />)}
+      {hours.map((v, h) => {
+        const x = h * step + (step - bw) / 2;
+        if (v == null) return <rect key={h} x={x} y={H - 4} width={bw} height="4" rx="2" className="fill-fill2" />;
+        const up = prev == null || v >= prev;
+        prev = v;
+        const hh = Math.max(4, (v / 100) * (H - 4));
+        return <rect key={h} x={x} y={H - hh} width={bw} height={hh} rx={Math.min(bw / 2, 3)} fill={color} fillOpacity={up ? 1 : 0.35} />;
+      })}
+      {[["0 h", 0], ["6 h", 6], ["12 h", 12], ["18 h", 18], ["24 h", 24]].map(([t, hr], i) => (
+        <text key={i} x={(Number(hr) / 24) * W} y={H + 18} fontSize="11" textAnchor={i === 0 ? "start" : i === 4 ? "end" : "middle"} className={T}>{t}</text>
+      ))}
     </svg>
   );
 }
@@ -302,12 +348,12 @@ export function Hypnogram({ levels, total, start, end }: { levels: [number, numb
       {[0, 1, 2, 3].map((i) => <line key={i} x1="0" y1={i * rowh + 11} x2={W} y2={i * rowh + 11} className="stroke-sep" strokeDasharray="1 3" />)}
       {levels.map(([a, b, st], i) => {
         const x = (a / total) * W, w = ((b - a) / total) * W, lv = STAGE_ROW[st], c = STAGE_COLOR[st];
-        const link = prev != null && prev !== lv ? <rect x={x - 0.6} y={Math.min(prev, lv) * rowh + 11} width="1.2" height={Math.abs(prev - lv) * rowh} fill={c} opacity=".35" /> : null;
+        const link = prev != null && prev !== lv ? <rect x={x - 0.5} y={Math.min(prev, lv) * rowh + 11} width="1" height={Math.abs(prev - lv) * rowh} className="fill-label2" opacity=".18" /> : null;
         prev = lv;
         return (
           <g key={i}>
             {link}
-            <rect x={x + 0.3} y={lv * rowh + 3} width={Math.max(w - 0.6, 1.4)} height="16" rx="4" fill={c} />
+            <rect x={x + 0.3} y={lv * rowh + 2} width={Math.max(w - 0.6, st === "awake" ? 3 : 2)} height="18" rx="4" fill={c} />
           </g>
         );
       })}
@@ -382,54 +428,64 @@ const MEDAL_FILL = [
   { bg: "#E3A574", fg: "#6B3A12", t: "3" },
 ];
 export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fmtY: (v: number) => string; label: string }) {
-  const W = 340, H = 190, L = 6, R = 6, T = 22, B = 26;
+  const [ref, W] = useW(340);
+  const H = 204, T0 = 40, B = 26, G = 58; // G : gouttière droite pour les graduations
   if (points.length === 0) return null;
   const pts = [...points].sort((a, b) => a.t - b.t);
   const vs = pts.map((p) => p.v);
   let lo = Math.min(...vs), hi = Math.max(...vs);
   if (hi - lo < 1e-6) { lo -= 1; hi += 1; }
-  const padV = (hi - lo) * 0.12;
+  const padV = (hi - lo) * 0.1;
   lo -= padV; hi += padV;
   const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
-  const X = (t: number) => (t1 === t0 ? (L + W - R) / 2 : L + 12 + ((t - t0) / (t1 - t0)) * (W - L - R - 24));
-  const Y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
-  const xy = pts.map((p) => [X(p.t), Y(p.v)] as [number, number]);
-  let d = "";
-  if (xy.length > 1) {
-    d = `M${xy[0][0]},${xy[0][1]}`;
-    for (let i = 0; i < xy.length - 1; i++) {
-      const p0 = xy[i - 1] ?? xy[i], p1 = xy[i], p2 = xy[i + 1], p3 = xy[i + 2] ?? p2;
-      const c1: [number, number] = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
-      const c2: [number, number] = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
-      const cl = (y: number) => Math.min(H - B, Math.max(T, y));
-      d += ` C${c1[0]},${cl(c1[1])} ${c2[0]},${cl(c2[1])} ${p2[0]},${p2[1]}`;
+  const PW = W - G;
+  const X = (t: number) => (t1 === t0 ? PW / 2 : 12 + ((t - t0) / (t1 - t0)) * (PW - 24));
+  const Y = (v: number) => T0 + (1 - (v - lo) / (hi - lo)) * (H - T0 - B);
+  // meilleur temps à date : escalier qui ne monte qu'à chaque nouveau record
+  let best = -Infinity, d = "";
+  pts.forEach((p, i) => {
+    if (p.v > best) {
+      const x = X(p.t), y = Y(p.v);
+      d += i === 0 ? `M${x.toFixed(1)},${y.toFixed(1)}` : ` H${x.toFixed(1)} V${y.toFixed(1)}`;
+      best = p.v;
     }
-  }
-  const grid = [0, 0.5, 1].map((f) => lo + (hi - lo) * (1 - f));
+  });
+  d += ` H${(PW - 4).toFixed(1)}`;
+  const grid = [hi - padV, (lo + hi) / 2, lo + padV];
   const dateTxt = (t: number) => new Date(t).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "2-digit" });
+  // médailles au-dessus de leur point, décalées vers le haut quand elles se touchent
+  const medals = pts.filter((p) => p.medal != null).map((p) => ({ p, x: X(p.t), y: Y(p.v), by: Y(p.v) - 18 })).sort((a, b) => a.x - b.x);
+  // rangée de médailles au-dessus du tracé : espacées d'au moins 23 px, reliées à leur point
+  const lane = medals.map((m) => ({ ...m, bx: m.x }));
+  lane.forEach((m, i) => { if (i) m.bx = Math.max(m.bx, lane[i - 1].bx + 23); });
+  const over = lane.length ? lane[lane.length - 1].bx - (PW - 10) : 0;
+  if (over > 0) lane.forEach((m) => { m.bx -= over; });
+  lane.forEach((m, i) => { if (i === 0) m.bx = Math.max(10, m.bx); else m.bx = Math.max(m.bx, lane[i - 1].bx + 23); });
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} style={{ display: "block", overflow: "visible" }}>
+    <svg ref={ref} width="100%" height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} style={{ display: "block" }}>
       {grid.map((v, i) => (
         <g key={i}>
-          <line x1={L} x2={W - R} y1={Y(v)} y2={Y(v)} stroke="var(--sep)" strokeWidth="1" />
-          <text x={L} y={Y(v) - 4} fontSize="10.5" fill="var(--label2)">{fmtY(v)}</text>
+          <line x1="0" x2={PW} y1={Y(v)} y2={Y(v)} className="stroke-sep" />
+          <text x={W} y={Y(v) + 4} fontSize="11" textAnchor="end" className={T}>{fmtY(v)}</text>
         </g>
       ))}
-      {d && <path d={d} fill="none" stroke="var(--sys-blue)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />}
-      {pts.filter((p) => p.medal == null).map((p, i) => (
-        <circle key={i} cx={X(p.t)} cy={Y(p.v)} r="3.6" fill="var(--card)" stroke="var(--label2)" strokeWidth="1.6" />
-      ))}
-      {pts.filter((p) => p.medal != null).map((p, i) => {
+      <path d={d} fill="none" stroke="var(--sys-blue)" strokeWidth="2" strokeOpacity=".55" strokeLinejoin="round" />
+      {pts.filter((p) => p.medal == null).map((p, i) => <circle key={i} cx={X(p.t)} cy={Y(p.v)} r="3.5" fill="var(--sys-blue)" fillOpacity=".45" />)}
+      {lane.map(({ p, x, y, bx }, i) => {
         const m = MEDAL_FILL[p.medal as number];
         return (
-          <g key={`m${i}`} transform={`translate(${X(p.t)},${Y(p.v)})`}>
-            <circle r="11" fill={m.bg} stroke="var(--card)" strokeWidth="2" />
-            <text textAnchor="middle" dy="3.4" fontSize={p.medal === 0 ? 8.5 : 11} fontWeight="800" fill={m.fg}>{m.t}</text>
+          <g key={`m${i}`}>
+            <line x1={x} y1={y} x2={bx} y2={22} stroke={m.bg} strokeWidth="1.5" />
+            <circle cx={x} cy={y} r="4" fill={m.bg} className="stroke-card" strokeWidth="1.5" />
+            <g transform={`translate(${bx},12)`}>
+              <circle r="10" fill={m.bg} className="stroke-card" strokeWidth="2" />
+              <text textAnchor="middle" dy="3.4" fontSize={p.medal === 0 ? 8.5 : 10.5} fontWeight="800" fill={m.fg}>{m.t}</text>
+            </g>
           </g>
         );
       })}
-      <text x={L} y={H - 6} fontSize="10.5" fill="var(--label2)">{dateTxt(t0)}</text>
-      <text x={W - R} y={H - 6} fontSize="10.5" textAnchor="end" fill="var(--label2)">{dateTxt(t1)}</text>
+      <text x="0" y={H - 6} fontSize="11" className={T}>{dateTxt(t0)}</text>
+      <text x={PW} y={H - 6} fontSize="11" textAnchor="end" className={T}>{dateTxt(t1)}</text>
     </svg>
   );
 }
