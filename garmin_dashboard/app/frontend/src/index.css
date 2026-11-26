@@ -522,9 +522,7 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
 
 /* Carrousel des pilules du haut (HIG) : plein écran, marges alignées sur les cartes, aimantation sur la marge gauche */
 .hk-carousel { scroll-snap-type: x mandatory; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; -webkit-mask-image: none; mask-image: none; }
-.hk-carousel { scroll-padding-left: 16px; scroll-padding-right: 16px; }
-@media (min-width: 640px) { .hk-carousel { scroll-padding-left: 24px; scroll-padding-right: 24px; } }
-.hk-carousel > a.hk-chip { scroll-snap-align: start; }
+.hk-carousel > a.hk-chip { scroll-snap-align: center; }
 @media (min-width: 768px) { .hk-carousel { scroll-snap-type: none; } }
 /* visuel de pilule : 34 px (≈30 px d origine × 1,12) */
 .hk-chip-ico { display: flex; flex: none; align-items: center; justify-content: center; zoom: 1.12; }
