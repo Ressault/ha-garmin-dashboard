@@ -91,50 +91,107 @@ export const ISun = (p: P) => (
 );
 
 /* Mini-pictogrammes en couleur pour les pastilles */
+/* Pictogrammes des pilules du haut : même boîte de 34 × 34, formes pleines, extrémités arrondies, léger dégradé de profondeur (façon SF Symbols). */
+const Gloss = ({ id }: { id: string }) => (
+  <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stopColor="#fff" stopOpacity=".34" />
+    <stop offset=".6" stopColor="#fff" stopOpacity="0" />
+  </linearGradient>
+);
+
 export const MiniSleep = ({ score }: { score: number | null }) => {
-  const C = 2 * Math.PI * 11;
-  const L = ((score ?? 0) / 100) * C;
+  const r = 12, C = 2 * Math.PI * r;
+  const L = (Math.max(0, Math.min(100, score ?? 0)) / 100) * C;
   return (
-    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden>
-      <circle cx="15" cy="15" r="11" fill="none" stroke="#5E6BFF" strokeOpacity=".18" strokeWidth="5" />
-      <circle cx="15" cy="15" r="11" fill="none" stroke="#5E6BFF" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${L} ${C}`} transform="rotate(-90 15 15)" />
-      <text x="15" y="19" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-foreground">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
+      <defs>
+        <linearGradient id="ms-ring" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#8B94FF" />
+          <stop offset="1" stopColor="#5E6BFF" />
+        </linearGradient>
+      </defs>
+      <circle cx="17" cy="17" r={r} fill="none" stroke="#5E6BFF" strokeOpacity=".18" strokeWidth="4.4" />
+      {L > 0 && <circle cx="17" cy="17" r={r} fill="none" stroke="url(#ms-ring)" strokeWidth="4.4" strokeLinecap="round" strokeDasharray={`${L} ${C}`} transform="rotate(-90 17 17)" />}
+      <text x="17" y="17.4" fontSize="11.5" fontWeight="700" textAnchor="middle" dominantBaseline="central" className="fill-foreground">
         {score ?? "–"}
       </text>
     </svg>
   );
 };
 export const MiniHeart = () => (
-  <span style={{ color: "#FF375F" }}>
-    <IHeart size={26} />
-  </span>
+  <svg width="34" height="34" viewBox="0.5 0.5 23 22.5" aria-hidden>
+    <defs>
+      <linearGradient id="mh-fill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#FF5C7E" />
+        <stop offset="1" stopColor="#FF2D55" />
+      </linearGradient>
+      <Gloss id="mh-gloss" />
+    </defs>
+    <path d="M12 21s-9-5.6-9-12.2C3 5.4 5.4 3 8.4 3c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2C18.6 3 21 5.4 21 8.8 21 15.4 12 21 12 21z" fill="url(#mh-fill)" />
+    <path d="M12 21s-9-5.6-9-12.2C3 5.4 5.4 3 8.4 3c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2C18.6 3 21 5.4 21 8.8 21 15.4 12 21 12 21z" fill="url(#mh-gloss)" />
+  </svg>
 );
 export const MiniTrend = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden fill="none" stroke="#AF52DE" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 22l7-8 5 4 10-12" />
-    <path d="M19 6h6v6" />
+  <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden fill="none" strokeLinecap="round" strokeLinejoin="round">
+    <defs>
+      <linearGradient id="mt-line" gradientUnits="userSpaceOnUse" x1="5" y1="28" x2="29" y2="6">
+        <stop offset="0" stopColor="#C984F5" />
+        <stop offset="1" stopColor="#AF52DE" />
+      </linearGradient>
+    </defs>
+    <path d="M5.5 25 13.5 16.5 19 21.5 28 10.5" stroke="url(#mt-line)" strokeWidth="4.6" />
+    <path d="M20.5 7.5h8.5V16" stroke="url(#mt-line)" strokeWidth="4.6" />
   </svg>
 );
 export const MiniPillars = ({ colors }: { colors: string[] }) => (
-  <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden>
-    {[[15, 7], [23, 15], [15, 23], [7, 15]].map(([x, y], i) => (
-      <circle key={i} cx={x} cy={y} r="5.5" fill={colors[i] ?? "#C7C7CC"} />
+  <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
+    <defs>
+      <Gloss id="mp-gloss" />
+    </defs>
+    {[[17, 8.6], [25.4, 17], [17, 25.4], [8.6, 17]].map(([x, y], i) => (
+      <g key={i}>
+        <circle cx={x} cy={y} r="5.3" fill={colors[i] ?? "#C7C7CC"} />
+        <circle cx={x} cy={y} r="5.3" fill="url(#mp-gloss)" />
+      </g>
     ))}
   </svg>
 );
 export const MiniList = () => (
-  <span style={{ color: "#FF375F" }}>
-    <IGrid size={26} />
-  </span>
-);
-export const MiniZones = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
-    <rect x="3" y="16" width="4" height="8" rx="2" fill="#30B0C7" />
-    <rect x="9" y="12" width="4" height="12" rx="2" fill="#34C759" />
-    <rect x="15" y="6" width="4" height="18" rx="2" fill="#FFB800" />
-    <rect x="21" y="10" width="4" height="14" rx="2" fill="#FF6B2C" />
+  <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
+    <defs>
+      <linearGradient id="ml-fill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#FF5C7E" />
+        <stop offset="1" stopColor="#FF2D55" />
+      </linearGradient>
+      <Gloss id="ml-gloss" />
+    </defs>
+    {[[3, 3], [18.8, 3], [3, 18.8], [18.8, 18.8]].map(([x, y], i) => (
+      <g key={i}>
+        <rect x={x} y={y} width="12.2" height="12.2" rx="4" fill="url(#ml-fill)" />
+        <rect x={x} y={y} width="12.2" height="12.2" rx="4" fill="url(#ml-gloss)" />
+      </g>
+    ))}
   </svg>
 );
+export const MiniZones = () => (
+  <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
+    <defs>
+      <Gloss id="mz-gloss" />
+    </defs>
+    {[
+      [2.2, 12, "#30B0C7"],
+      [10.2, 19, "#34C759"],
+      [18.2, 28, "#FFB800"],
+      [26.2, 22, "#FF6B2C"],
+    ].map(([x, h, c], i) => (
+      <g key={i}>
+        <rect x={x as number} y={31 - (h as number)} width="5.6" height={h as number} rx="2.8" fill={c as string} />
+        <rect x={x as number} y={31 - (h as number)} width="5.6" height={h as number} rx="2.8" fill="url(#mz-gloss)" />
+      </g>
+    ))}
+  </svg>
+);
+
 /* Pictogrammes pleins façon SF Symbols (poids Semibold) : « calendar » et « trophy.fill » */
 export const MiniPlan = () => (
   <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
