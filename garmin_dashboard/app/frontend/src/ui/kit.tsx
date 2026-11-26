@@ -155,8 +155,9 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
   useLayoutEffect(() => {
     const row = ref.current, tr = track.current;
     const gs = [glide.current, glideDesk.current].filter(Boolean) as HTMLSpanElement[];
-    const cur = row?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!row || !cur || !tr || !gs.length) return;
+    const cur = row?.querySelector<HTMLElement>('[aria-current="page"]') ?? null;
+    if (!row || !tr || !gs.length) return;
+    gs.forEach((g) => { g.style.display = cur ? "" : "none"; }); // Synthèse : aucune pilule active, pas de goutte
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     // Le verre vit HORS du rail défilant (un backdrop-filter dans un conteneur à défilement ne voit pas le contenu de la page) :
     // un corps de verre par pilule dans un rail collant, décalé de -scrollLeft pour suivre la rangée.
@@ -164,12 +165,12 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
     const bodies = chips.map(() => { const s = document.createElement("span"); s.className = "hk-pg"; tr.insertBefore(s, tr.firstChild); return s; });
     const place = () => {
       chips.forEach((c, i) => { bodies[i].style.transform = `translateX(${c.offsetLeft}px)`; bodies[i].style.width = `${c.offsetWidth}px`; });
-      if (glideDesk.current) { glideDesk.current.style.top = `${cur.offsetTop}px`; glideDesk.current.style.height = `${cur.offsetHeight}px`; }
+      if (glideDesk.current && cur) { glideDesk.current.style.top = `${cur.offsetTop}px`; glideDesk.current.style.height = `${cur.offsetHeight}px`; }
       tr.style.width = `${row.scrollWidth}px`;
       tr.style.transform = `translateX(${-row.scrollLeft}px)`;
     };
     const rect = () => {
-      const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
+      const r = row.getBoundingClientRect(), c = (cur ?? chips[0]).getBoundingClientRect();
       return { r, c, x: c.left - r.left + row.scrollLeft, w: c.width };
     };
     const target = () => {
@@ -182,6 +183,14 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
         g.style.width = `${w}px`; g.style.transform = `translateX(${x}px)`;
       });
     };
+    if (!cur) { // pas de pilule active : verre seul, rangée au début
+      place();
+      const onS = () => { tr.style.transform = `translateX(${-row.scrollLeft}px)`; };
+      const id0 = requestAnimationFrame(place);
+      row.addEventListener("scroll", onS, { passive: true });
+      const ro0 = new ResizeObserver(place); ro0.observe(row);
+      return () => { cancelAnimationFrame(id0); row.removeEventListener("scroll", onS); ro0.disconnect(); bodies.forEach((b) => b.remove()); };
+    }
     const from = last && last.label === label && performance.now() - last.t < 4000 ? last : null;
     if (from) row.scrollLeft = Math.min(from.scroll, row.scrollWidth - row.clientWidth);
     row.scrollTo({ left: target(), behavior: from && !reduce ? "smooth" : "auto" });

@@ -230,7 +230,7 @@ svg text {
   }
 }
 .page-in {
-  animation: page-in 220ms var(--ease-out-strong) both;
+  animation: page-in 220ms var(--ease-out-strong) backwards; /* pas de remplissage final : une animation figée casse le flou des pilules (GPU) */
 }
 @keyframes page-fade {
   from {
@@ -510,8 +510,8 @@ html[data-scrub] body { -webkit-user-select: none; user-select: none; }
 html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-current="page"] { transform: scale(1.05); }
 
 /* Rail de verre : collant comme la rangée, derrière les pilules (z 29 < 30), suit le défilement horizontal par -scrollLeft */
-.hk-rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 29; height: 64px; margin-bottom: -64px; pointer-events: none; overflow-x: clip; overflow-y: visible; }
-.hk-rail-track { position: absolute; left: 0; top: 0; height: 64px; will-change: transform; }
+.hk-rail { position: sticky; top: -8px; z-index: 29; height: 64px; margin-top: calc(-16px - env(safe-area-inset-top, 0px)); margin-bottom: -64px; pointer-events: none; overflow-x: clip; overflow-y: visible; }
+.hk-rail-track { position: absolute; left: 0; top: calc(env(safe-area-inset-top, 0px) + 16px); height: 64px; will-change: transform; }
 /* verre d'une pilule : même matériau que la barre du bas (.hk-dock-glass) */
 .hk-pg {
   position: absolute; left: 0; top: 0; height: 64px; border-radius: 22px; pointer-events: none;
@@ -562,7 +562,7 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
    Le remplissage haut/bas est compensé par des marges négatives : la mise en page au repos ne bouge pas. */
 nav.hk-carousel {
   position: sticky; top: -8px; z-index: 30;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 16px); padding-bottom: 16px; margin-top: calc(-16px - env(safe-area-inset-top, 0px)); margin-bottom: -14px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 16px); padding-bottom: 16px; margin-top: 0; margin-bottom: -14px;
   background: transparent; backdrop-filter: none; border: 0; box-shadow: none;
   pointer-events: none; /* le conteneur ne couvre rien : seules les pilules captent le toucher */
 }
@@ -591,24 +591,24 @@ nav.hk-carousel > a.hk-chip { pointer-events: auto; }
 @keyframes halo-in { from { opacity: 0; } }
 @keyframes halo-out { to { opacity: 0; } }
 /* onglets du bas */
-.hk-layer[data-kind="fade"][data-role="in"] { animation: lf-in 150ms ease-out both; }
+.hk-layer[data-kind="fade"][data-role="in"] { animation: lf-in 150ms ease-out backwards; }
 .hk-layer[data-kind="fade"][data-role="out"] { animation: lf-out 150ms ease-out both; }
 /* pilules du haut : tout ce qui suit le bandeau glisse ; le titre et le bandeau ne bougent pas */
 .hk-layer[data-kind="slide"][data-role="out"] .hk-page > * { visibility: hidden; }
 .hk-layer[data-kind="slide"][data-role="out"] .hk-page > [data-fixed] ~ * { visibility: visible; }
-.hk-layer[data-kind="slide"][data-role="in"][data-dir="1"] .hk-page > [data-fixed] ~ * { animation: sl-in-r 380ms var(--ease-ios) both; }
-.hk-layer[data-kind="slide"][data-role="in"][data-dir="-1"] .hk-page > [data-fixed] ~ * { animation: sl-in-l 380ms var(--ease-ios) both; }
+.hk-layer[data-kind="slide"][data-role="in"][data-dir="1"] .hk-page > [data-fixed] ~ * { animation: sl-in-r 380ms var(--ease-ios) backwards; }
+.hk-layer[data-kind="slide"][data-role="in"][data-dir="-1"] .hk-page > [data-fixed] ~ * { animation: sl-in-l 380ms var(--ease-ios) backwards; }
 .hk-layer[data-kind="slide"][data-role="out"][data-dir="1"] .hk-page > [data-fixed] ~ * { animation: sl-out-l 380ms var(--ease-ios) both; }
 .hk-layer[data-kind="slide"][data-role="out"][data-dir="-1"] .hk-page > [data-fixed] ~ * { animation: sl-out-r 380ms var(--ease-ios) both; }
 .hk-layer[data-kind] .hk-stagger > * { animation: none; }
 /* halo coloré : fondu progressif d'une page à l'autre */
-.hk-layer[data-kind="slide"][data-role="in"] .hk-page::before { animation: halo-in 380ms ease-out both; }
+.hk-layer[data-kind="slide"][data-role="in"] .hk-page::before { animation: halo-in 380ms ease-out backwards; }
 .hk-layer[data-kind="slide"][data-role="out"] .hk-page::before { animation: halo-out 380ms ease-out both; }
-.hk-layer[data-kind="slide"][data-role="in"] { animation: sl-in-done 380ms linear both; }
+.hk-layer[data-kind="slide"][data-role="in"] { animation: sl-in-done 380ms linear backwards; }
 @keyframes sl-in-done { from { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .hk-layer[data-kind="slide"] .hk-page > * { animation: none !important; visibility: visible !important; }
   .hk-layer[data-kind="slide"][data-role="out"] { animation: lf-out 120ms ease-out both; }
-  .hk-layer[data-kind="slide"][data-role="in"] { animation: lf-in 120ms ease-out both; }
+  .hk-layer[data-kind="slide"][data-role="in"] { animation: lf-in 120ms ease-out backwards; }
 }
 body { overflow-x: clip; }
