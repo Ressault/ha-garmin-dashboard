@@ -513,3 +513,9 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
   transition: transform 700ms var(--spring), width 700ms var(--spring);
 }
 @media (prefers-reduced-motion: reduce) { .hk-chip-glide { transition: none; } }
+
+/* Carrousel des pilules du haut (HIG) : plein écran, marges alignées sur les cartes, aimantation sur la marge gauche */
+.hk-carousel { scroll-snap-type: x mandatory; scroll-padding-inline: 16px; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.hk-carousel > a.hk-chip { scroll-snap-align: start; }
+@media (min-width: 640px) { .hk-carousel { scroll-padding-inline: 24px; } }
+@media (min-width: 768px) { .hk-carousel { scroll-snap-type: none; scroll-padding-inline: 0; } }
