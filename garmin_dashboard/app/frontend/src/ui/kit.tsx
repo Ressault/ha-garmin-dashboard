@@ -148,13 +148,26 @@ let last: { label: string; x: number; w: number; scroll: number; t: number } | n
 
 export function ChipRow({ children, label }: { children: ReactNode; label: string }) {
   const ref = useRef<HTMLElement>(null);
-  const glide = useRef<HTMLSpanElement>(null);
+  const track = useRef<HTMLDivElement>(null);
+  const glide = useRef<HTMLSpanElement>(null); // goutte (rail de verre, < 768 px)
+  const glideDesk = useRef<HTMLSpanElement>(null); // goutte (dans la rangée, ≥ 768 px)
   useScrubNav(ref, "a.hk-chip");
   useLayoutEffect(() => {
-    const row = ref.current, g = glide.current;
+    const row = ref.current, tr = track.current;
+    const gs = [glide.current, glideDesk.current].filter(Boolean) as HTMLSpanElement[];
     const cur = row?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!row || !cur || !g) return;
+    if (!row || !cur || !tr || !gs.length) return;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Le verre vit HORS du rail défilant (un backdrop-filter dans un conteneur à défilement ne voit pas le contenu de la page) :
+    // un corps de verre par pilule dans un rail collant, décalé de -scrollLeft pour suivre la rangée.
+    const chips = [...row.querySelectorAll<HTMLElement>("a.hk-chip")];
+    const bodies = chips.map(() => { const s = document.createElement("span"); s.className = "hk-pg"; tr.insertBefore(s, tr.firstChild); return s; });
+    const place = () => {
+      chips.forEach((c, i) => { bodies[i].style.transform = `translateX(${c.offsetLeft}px)`; bodies[i].style.width = `${c.offsetWidth}px`; });
+      if (glideDesk.current) { glideDesk.current.style.top = `${cur.offsetTop}px`; glideDesk.current.style.height = `${cur.offsetHeight}px`; }
+      tr.style.width = `${row.scrollWidth}px`;
+      tr.style.transform = `translateX(${-row.scrollLeft}px)`;
+    };
     const rect = () => {
       const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
       return { r, c, x: c.left - r.left + row.scrollLeft, w: c.width };
@@ -163,33 +176,47 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
       const { r, c } = rect();
       return Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
     };
+    const setG = (x: number, w: number, anim: boolean) => {
+      gs.forEach((g) => {
+        if (!anim) { g.style.transition = "none"; }
+        g.style.width = `${w}px`; g.style.transform = `translateX(${x}px)`;
+      });
+    };
     const from = last && last.label === label && performance.now() - last.t < 4000 ? last : null;
     if (from) row.scrollLeft = Math.min(from.scroll, row.scrollWidth - row.clientWidth);
     row.scrollTo({ left: target(), behavior: from && !reduce ? "smooth" : "auto" });
+    place();
     const to = rect();
-    g.style.transition = "none";
-    g.style.width = `${from ? from.w : to.w}px`;
-    g.style.transform = `translateX(${from ? from.x : to.x}px)`;
-    void g.offsetWidth;
-    g.style.transition = "";
-    g.style.width = `${to.w}px`;
-    g.style.transform = `translateX(${to.x}px)`;
+    setG(from ? from.x : to.x, from ? from.w : to.w, false);
+    void gs[0].offsetWidth;
+    gs.forEach((g) => { g.style.transition = ""; });
+    setG(to.x, to.w, true);
     last = { label, x: to.x, w: to.w, scroll: row.scrollLeft, t: performance.now() };
     const id = requestAnimationFrame(() => { // recalage unique une fois les polices posées
       if (!from) row.scrollLeft = target();
+      place();
       const n = rect();
-      g.style.transform = `translateX(${n.x}px)`;
+      setG(n.x, n.w, true);
       last = { label, x: n.x, w: n.w, scroll: row.scrollLeft, t: performance.now() };
     });
-    const onScroll = () => { if (last) last.scroll = row.scrollLeft; };
+    const onScroll = () => { tr.style.transform = `translateX(${-row.scrollLeft}px)`; if (last) last.scroll = row.scrollLeft; };
     row.addEventListener("scroll", onScroll, { passive: true });
-    return () => { cancelAnimationFrame(id); row.removeEventListener("scroll", onScroll); };
+    const ro = new ResizeObserver(place);
+    ro.observe(row);
+    return () => { cancelAnimationFrame(id); row.removeEventListener("scroll", onScroll); ro.disconnect(); bodies.forEach((b) => b.remove()); };
   }, []);
   return (
-    <nav ref={ref} aria-label={label} data-fixed className="hk-scroll hk-carousel -mx-4 -mb-2.5 px-4 pb-3 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
-      <span ref={glide} aria-hidden className="hk-chip-glide" />
-      {children}
-    </nav>
+    <>
+      <div aria-hidden className="hk-rail -mx-4 sm:-mx-6">
+        <div ref={track} className="hk-rail-track">
+          <span ref={glide} className="hk-chip-glide" />
+        </div>
+      </div>
+      <nav ref={ref} aria-label={label} data-fixed className="hk-scroll hk-carousel -mx-4 -mb-2.5 px-4 pb-3 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
+        <span ref={glideDesk} aria-hidden className="hk-chip-glide hk-chip-glide-desk" />
+        {children}
+      </nav>
+    </>
   );
 }
 
