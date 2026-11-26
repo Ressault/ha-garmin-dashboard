@@ -509,7 +509,7 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
   position: absolute; z-index: 0; top: 0; left: 0; height: 60px; border-radius: 20px; pointer-events: none;
   background: var(--glass-bg); backdrop-filter: blur(24px) saturate(180%);
   box-shadow: inset 0 1px 0 0 var(--glass-hi), inset 0 0 0 1px rgb(10 132 255 / 0.4), 0 8px 24px -4px var(--glass-shadow);
-  transition: transform 700ms var(--spring), width 700ms var(--spring);
+  transition: none;
 }
 @media (prefers-reduced-motion: reduce) { .hk-chip-glide { transition: none; } }
 
@@ -520,12 +520,32 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
 /* visuel de pilule : 34 px (≈30 px d origine × 1,12) */
 .hk-chip-ico { display: flex; flex: none; align-items: center; justify-content: center; zoom: 1.12; }
 
-/* Transition latérale entre sous-vues : glissement directionnel + fondu rapide, ressort critique (sans rebond) */
-:root { --spring-soft: linear(0, 0.076, 0.228, 0.392, 0.538, 0.658, 0.752, 0.823, 0.875, 0.913, 0.939, 0.958, 0.971, 0.98, 0.987, 0.991, 0.994, 0.996, 0.997, 0.998, 0.999, 0.999, 0.999, 1, 1); }
-@keyframes sub-slide-next { from { transform: translate3d(36px, 0, 0); } }
-@keyframes sub-slide-prev { from { transform: translate3d(-36px, 0, 0); } }
-@keyframes sub-fade { from { opacity: 0; } }
-.page-slide[data-dir="1"] { animation: sub-slide-next 520ms var(--spring-soft) both, sub-fade 200ms ease-out both; }
-.page-slide[data-dir="-1"] { animation: sub-slide-prev 520ms var(--spring-soft) both, sub-fade 200ms ease-out both; }
-@media (prefers-reduced-motion: reduce) { .page-slide[data-dir] { animation: sub-fade 160ms ease-out both; } }
+/* Transition entre pages (iOS) : la page qui sort recule de 30 % en s'assombrissant pendant que la suivante la recouvre.
+   Courbe de l'écran de navigation iOS : aucun rebond. Les deux pages glissent ensemble, rien d'autre ne bouge. */
+:root { --ease-ios: cubic-bezier(0.32, 0.72, 0, 1); }
+.hk-layer[data-role="out"] { position: absolute; left: 0; right: 0; pointer-events: none; }
+.hk-pager { overflow-x: clip; }
+@keyframes pg-in-from-right { from { transform: translate3d(100%, 0, 0); } }
+@keyframes pg-in-from-left { from { transform: translate3d(-100%, 0, 0); } }
+@keyframes pg-out-to-left { to { transform: translate3d(-30%, 0, 0); } }
+@keyframes pg-out-to-right { to { transform: translate3d(30%, 0, 0); } }
+@keyframes pg-dim { to { opacity: 0.16; } }
+.hk-layer[data-role="in"][data-dir="1"] { animation: pg-in-from-right 440ms var(--ease-ios) both; }
+.hk-layer[data-role="in"][data-dir="-1"] { animation: pg-in-from-left 440ms var(--ease-ios) both; }
+.hk-layer[data-role="out"][data-dir="1"] { animation: pg-out-to-left 440ms var(--ease-ios) both; }
+.hk-layer[data-role="out"][data-dir="-1"] { animation: pg-out-to-right 440ms var(--ease-ios) both; }
+.hk-layer[data-role="in"][data-dir="1"] { box-shadow: -10px 0 28px -10px rgb(0 0 0 / 0.22); }
+.hk-layer[data-role="in"][data-dir="-1"] { box-shadow: 10px 0 28px -10px rgb(0 0 0 / 0.22); }
+.hk-layer[data-role="out"]::after { content: ""; position: absolute; inset: 0; background: #000; opacity: 0; animation: pg-dim 440ms var(--ease-ios) both; }
+/* la page qui entre est déjà posée : pas de seconde animation d'apparition à l'intérieur pendant qu'elle glisse */
+.hk-layer[data-role="in"][data-dir] .hero-in, .hk-layer[data-role="in"][data-dir] .hk-stagger > * { animation: none; }
+/* ordinateur : l'ancienne page disparaît, la nouvelle apparaît en fondu */
+@media (min-width: 768px) {
+  .hk-layer[data-role="out"] { display: none; }
+  .hk-layer[data-role="in"][data-dir] { animation: page-fade 220ms ease-out both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hk-layer[data-role="out"] { display: none; }
+  .hk-layer[data-role="in"][data-dir] { animation: page-fade 160ms ease-out both; }
+}
 body { overflow-x: clip; }

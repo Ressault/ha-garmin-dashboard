@@ -72,12 +72,12 @@ function Refraction({ id, w, h, bezel, scale, blur }: { id: string; w: number; h
   );
 }
 
-/** Ressort amorti (réponse 0,4 s, amortissement 0,8 : valeurs Apple) intégré à pas fixe, interruptible */
+/** Ressort à amortissement critique (aucun dépassement), réponse 0,34 s, intégré à pas fixe, interruptible */
 class Spring {
   x: number; v = 0; to: number;
   constructor(x: number) { this.x = x; this.to = x; }
   step(dt: number) {
-    const w = (2 * Math.PI) / 0.4, k = w * w, c = 2 * 0.8 * w;
+    const w = (2 * Math.PI) / 0.34, k = w * w, c = 2 * 1 * w;
     for (let t = 0; t < dt; t += 1 / 240) {
       const h = Math.min(1 / 240, dt - t);
       this.v += (-k * (this.x - this.to) - c * this.v) * h;
@@ -123,10 +123,8 @@ export function TabBar({ route }: { route: Route }) {
   const paint = () => {
     const d = drop.current;
     if (!d) return;
-    const v = sx.current.v;
-    const stretch = Math.min(Math.abs(v) / 1900, 0.24); // goutte étirée dans le sens du mouvement
-    const press = sp.current.x;
-    d.style.transform = `translate3d(${sx.current.x}px,0,0) scale(${(press * (1 + stretch)).toFixed(4)},${(press * (1 - stretch * 0.55)).toFixed(4)})`;
+    const press = Math.min(sp.current.x, 1.08); // jamais de dépassement d'échelle
+    d.style.transform = `translate3d(${sx.current.x}px,0,0) scale(${press.toFixed(4)})`;
   };
   const tick = (t: number) => {
     const dt = Math.min((t - last.current) / 1000 || 1 / 60, 1 / 20);
@@ -152,7 +150,7 @@ export function TabBar({ route }: { route: Route }) {
       ref={ref}
       aria-label="Navigation principale"
       className="hk-tabbar md:hidden"
-      onPointerDown={press(1.1)}
+      onPointerDown={press(1.06)}
       onPointerUp={press(1)}
       onPointerCancel={press(1)}
       onPointerLeave={press(1)}
