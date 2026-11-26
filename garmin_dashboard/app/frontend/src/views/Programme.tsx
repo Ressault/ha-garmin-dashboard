@@ -206,7 +206,7 @@ export default function Programme() {
               {plans.map((p) => (
                 <button key={p.id} aria-pressed={p.id === id} onClick={() => setSel(p.id)} className="hk-pill max-w-[62%]" title={p.name}><span>{p.name}</span></button>
               ))}
-              {!adding && <button className="ml-auto h-9 shrink-0 text-[15px] font-medium text-[color:var(--tint)]" onClick={() => setAdding(true)}>Importer</button>}
+              {!adding && <button className="ml-auto h-11 shrink-0 px-1 text-[16px] font-semibold text-[color:var(--tint)]" onClick={() => setAdding(true)}>Importer</button>}
             </div>
             {adding && <Import onCreated={created} onCancel={() => setAdding(false)} />}
             {!detail.data ? <Skel h={320} /> : <Body key={detail.data.id} d={detail.data} onDeleted={() => { setSel(null); bump(); }} />}

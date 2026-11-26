@@ -318,9 +318,9 @@ export function Forme() {
               <div className="flex items-center justify-between gap-2">
                 <Lbl>{dayName(heart.date)}, heure par heure</Lbl>
                 {hdays.length > 1 && (
-                  <div role="group" aria-label="Jour" className="flex gap-1 rounded-full bg-fill p-0.5">
+                  <div role="group" aria-label="Jour" className="flex h-9 gap-0.5 rounded-full bg-fill p-0.5">
                     {hdays.map((h) => (dayName(h.date) === "Aujourd'hui" ? "Auj." : dayName(h.date))).map((l, i) => (
-                      <button key={l} type="button" aria-pressed={day === i} onClick={() => setDay(i)} className="rounded-full px-2.5 py-1 text-[13px] font-semibold" style={day === i ? { background: "var(--card)", boxShadow: "0 1px 3px rgb(0 0 0 / .12)" } : { color: "var(--label2)" }}>
+                      <button key={l} type="button" aria-pressed={day === i} onClick={() => setDay(i)} className="hk-seg whitespace-nowrap rounded-full px-3 text-[13px] font-semibold">
                         {l}
                       </button>
                     ))}

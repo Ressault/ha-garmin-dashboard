@@ -115,9 +115,9 @@ export function Activites() {
   return (
     <Frame current="activites" tint="red">
       <div className="mt-4 flex flex-col gap-3.5">
-        <label className="flex h-10 items-center gap-2 rounded-xl bg-fill px-3 text-label2">
+        <label className="flex h-11 items-center gap-2 rounded-xl bg-fill px-3 text-label2">
           <ISearch />
-          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher une sortie" aria-label="Rechercher une sortie" className="min-w-0 flex-1 bg-transparent text-[17px] text-foreground outline-none" />
+          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher une sortie" aria-label="Rechercher une sortie" className="h-full min-w-0 flex-1 bg-transparent text-[17px] text-foreground outline-none" />
         </label>
         <Card>
           <div className="flex items-baseline justify-between">
@@ -421,7 +421,7 @@ export function Records() {
   return (
     <Frame current="records" tint="gold">
       <div className="mt-4 flex flex-col gap-3.5">
-        <div role="group" aria-label="Sport" className="grid h-10 grid-cols-3 rounded-full bg-fill p-1">
+        <div role="group" aria-label="Sport" className="grid h-11 grid-cols-3 rounded-full bg-fill p-1">
           {SPORTS.map(({ k, label }) => (
             <button key={k} type="button" aria-pressed={sport === k} onClick={() => { setSport(k); setYear("all"); setSel(k === "bike" ? "10 km" : "5 km"); }} className="hk-seg rounded-full text-[15px] font-semibold">
               {label}
@@ -435,9 +435,9 @@ export function Records() {
         ) : (
           <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2">
             <Card>
-              <div role="tablist" aria-label="Vue" className="-mx-[18px] -mt-[18px] mb-3.5 grid grid-cols-2 border-b border-sep">
+              <div role="tablist" aria-label="Vue" className="mb-3.5 grid h-9 grid-cols-2 rounded-full bg-fill p-0.5">
                 {([["analyse", "Analyse"], ["top", "Top 10"]] as const).map(([k, l]) => (
-                  <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className="hk-tab-u h-12 text-[16px] font-semibold">
+                  <button key={k} type="button" role="tab" aria-selected={tab === k} aria-pressed={tab === k} onClick={() => setTab(k)} className="hk-seg rounded-full text-[14px] font-semibold">
                     {l}
                   </button>
                 ))}

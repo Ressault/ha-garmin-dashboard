@@ -230,7 +230,7 @@ export function ThemeToggle() {
   const { theme, toggle } = useTheme();
   const dark = theme === "dark";
   return (
-    <button type="button" onClick={toggle} className="hk-press flex size-10 shrink-0 items-center justify-center rounded-full bg-fill" aria-label={dark ? "Passer au thème clair" : "Passer au thème sombre"}>
+    <button type="button" onClick={toggle} className="hk-press flex size-11 shrink-0 items-center justify-center rounded-full bg-fill" aria-label={dark ? "Passer au thème clair" : "Passer au thème sombre"}>
       {dark ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
     </button>
   );
@@ -262,7 +262,7 @@ export function SyncButton({ wide }: { wide?: boolean }) {
       disabled={syncing}
       aria-busy={syncing}
       aria-label="Synchroniser avec Garmin"
-      className={`hk-press flex h-10 items-center justify-center gap-2 rounded-full bg-fill text-[14px] font-semibold disabled:opacity-60 ${wide ? "flex-1 px-3" : "size-10 shrink-0"}`}
+      className={`hk-press flex h-11 items-center justify-center gap-2 rounded-full bg-fill text-[14px] font-semibold disabled:opacity-60 ${wide ? "flex-1 px-3" : "size-11 shrink-0"}`}
     >
       {syncing ? <Loader2 className="size-[18px] animate-spin" /> : <RefreshCw className="size-[18px]" />}
       {wide && (syncing ? "Synchro…" : "Synchroniser")}
