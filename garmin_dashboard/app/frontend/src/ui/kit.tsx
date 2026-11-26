@@ -155,16 +155,21 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
     const cur = row?.querySelector<HTMLElement>('[aria-current="page"]');
     if (!row || !cur || !g) return;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Marges de bout de rangée : la première et la dernière pilule peuvent elles aussi se centrer au milieu de l'écran (mobile)
+    const chips = [...row.querySelectorAll<HTMLElement>("a.hk-chip")];
+    const edges = () => {
+      if (matchMedia("(min-width: 768px)").matches) { row.style.paddingLeft = row.style.paddingRight = ""; return; }
+      row.style.paddingLeft = `${Math.max(16, (row.clientWidth - chips[0].offsetWidth) / 2)}px`;
+      row.style.paddingRight = `${Math.max(16, (row.clientWidth - chips[chips.length - 1].offsetWidth) / 2)}px`;
+    };
+    edges();
     const rect = () => {
       const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
       return { r, c, x: c.left - r.left + row.scrollLeft, w: c.width };
     };
     const target = () => {
       const { r, c } = rect();
-      const pad = parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0; // même point d'aimantation que le scroll-snap
-      // pilule active déjà entièrement visible : on ne bouge pas (1re pilule collée à la marge au chargement) ; sinon elle se cale sur la marge gauche
-      if (c.left >= r.left + pad - 1 && c.right <= r.right - pad + 1) return row.scrollLeft;
-      return Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - pad));
+      return Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
     };
     const from = last && last.label === label && performance.now() - last.t < 4000 ? last : null;
     if (from) row.scrollLeft = Math.min(from.scroll, row.scrollWidth - row.clientWidth);
@@ -179,6 +184,7 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
     g.style.transform = `translateX(${to.x}px)`;
     last = { label, x: to.x, w: to.w, scroll: row.scrollLeft, t: performance.now() };
     const id = requestAnimationFrame(() => { // recalage unique une fois les polices posées
+      edges();
       if (!from) row.scrollLeft = target();
       const n = rect();
       g.style.transform = `translateX(${n.x}px)`;
