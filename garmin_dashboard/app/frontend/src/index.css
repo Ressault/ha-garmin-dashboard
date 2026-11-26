@@ -227,7 +227,6 @@ svg text {
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
 }
 .page-in {

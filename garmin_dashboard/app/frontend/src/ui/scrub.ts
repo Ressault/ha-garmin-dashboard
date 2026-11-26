@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from "react";
+import { ORDER, parseHash, PATH } from "@/lib/route";
 
 const LONG_PRESS_MS = 260; // appui prolongé avant d'entrer en mode glissement
 const STEP_PX = 56; // distance de glissement pour passer à la page suivante
@@ -115,11 +116,9 @@ export function usePageSwipe() {
       const t = e.changedTouches[0];
       const dx = t.clientX - x0, dy = t.clientY - y0;
       if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO || Date.now() - t0 > SWIPE_MAX_MS) return;
-      const chips = Array.from(document.querySelectorAll<HTMLAnchorElement>("nav.hk-scroll a.hk-chip"));
-      const cur = chips.findIndex((a) => a.getAttribute("aria-current") === "page");
-      if (cur < 0) return;
-      const next = chips[cur + (dx < 0 ? 1 : -1)];
-      if (next) window.location.hash = next.getAttribute("href") ?? "";
+      const cur = ORDER.indexOf(parseHash(window.location.hash).name as (typeof ORDER)[number]);
+      const next = cur < 0 ? undefined : ORDER[cur + (dx < 0 ? 1 : -1)];
+      if (next) window.location.hash = PATH[next];
     };
     document.addEventListener("touchstart", start, { passive: true });
     document.addEventListener("touchend", end, { passive: true });

@@ -317,10 +317,10 @@ export function ShortcutChips({ current }: { current?: string }) {
   const sleepLabel = l?.sleep_score == null ? "—" : l.sleep_score >= 80 ? "Bon" : l.sleep_score >= 60 ? "Correct" : "Faible";
   return (
     <ChipRow label="Raccourcis">
+      <Chip href={PATH.piliers} current={current === "piliers"} icon={<MiniPillars colors={colors} />} label="Mes piliers" value={colors.length ? `${greens} sur 4 au vert` : "—"} />
       <Chip href={PATH.sommeil} current={current === "sommeil"} icon={<MiniSleep score={l?.sleep_score != null ? Math.round(l.sleep_score) : null} />} label="Sommeil" value={sleepLabel} />
       <Chip href={PATH.forme} current={current === "forme"} icon={<MiniHeart />} label="Forme et santé" value={l?.resting_hr != null ? `${nf(l.resting_hr)} bpm` : "—"} />
       <Chip href={PATH.progres} icon={<MiniTrend />} label="Progrès" value={half ? `Semi ${fmtClock(half).slice(0, -3)}` : "—"} />
-      <Chip href={PATH.piliers} current={current === "piliers"} icon={<MiniPillars colors={colors} />} label="Mes piliers" value={colors.length ? `${greens} sur 4 au vert` : "—"} />
     </ChipRow>
   );
 }
