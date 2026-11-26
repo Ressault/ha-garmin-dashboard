@@ -263,7 +263,7 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
     row.addEventListener("scroll", onScroll, { passive: true });
     row.addEventListener("pointerdown", press);
     const ro = new ResizeObserver(place);
-    ro.observe(row);
+    ro.observe(row); chips.forEach((c) => ro.observe(c)); // une pilule qui s'élargit à l'arrivée des données recale son verre
     return () => {
       cancelAnimationFrame(id); row.removeEventListener("scroll", onScroll); row.removeEventListener("pointerdown", press); ro.disconnect();
       bodies.forEach((b) => b.remove()); svg.replaceChildren();
