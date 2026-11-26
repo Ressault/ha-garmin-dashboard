@@ -8,25 +8,15 @@ import { ThemeProvider, useTheme } from "@/lib/theme";
 import { routeKey, sectionOf, subviewDir, useRoute, type Route } from "@/lib/route";
 import { useEdgeFades, usePageSwipe } from "@/ui/scrub";
 import { Sidebar, TabBar } from "@/ui/shell";
+import { Activites, Entrainement, Progres, Records } from "@/views/Activite";
+import { Forme, Piliers, Sommeil } from "@/views/Longevite";
+import Programme from "@/views/Programme";
 import Synthese from "@/views/Synthese";
 
 // Les écrans autres que la synthèse ne sont chargés qu'à la demande : démarrage plus léger.
 const ActivityDetailView = lazy(() => import("@/views/ActivityDetail"));
-const L = {
-  Piliers: lazy(() => import("@/views/Longevite").then((m) => ({ default: m.Piliers }))),
-  Sommeil: lazy(() => import("@/views/Longevite").then((m) => ({ default: m.Sommeil }))),
-  Forme: lazy(() => import("@/views/Longevite").then((m) => ({ default: m.Forme }))),
-  Activites: lazy(() => import("@/views/Activite").then((m) => ({ default: m.Activites }))),
-  Progres: lazy(() => import("@/views/Activite").then((m) => ({ default: m.Progres }))),
-  Entrainement: lazy(() => import("@/views/Activite").then((m) => ({ default: m.Entrainement }))),
-  Records: lazy(() => import("@/views/Activite").then((m) => ({ default: m.Records }))),
-  Programme: lazy(() => import("@/views/Programme")),
-};
-
-// Précharge les écrans en tâche de fond : la page qui entre n'affiche jamais un écran vide pendant le glissement.
-const preload = () => {
-  void import("@/views/Longevite"); void import("@/views/Activite"); void import("@/views/Programme");
-};
+// Écrans de navigation intégrés au démarrage (≈ 60 ko) : la page qui entre existe dès la première image du glissement.
+const L = { Piliers, Sommeil, Forme, Activites, Progres, Entrainement, Records, Programme };
 
 function View({ route }: { route: Route }) {
   switch (route.name) {
@@ -64,14 +54,16 @@ function Shell() {
   const prev = useRef<Route["name"]>(route.name);
   // Deux couches pendant une transition : la page qui sort (figée, gardée telle quelle) et celle qui entre.
   // Le sens est calculé une seule fois par changement de page ; une re-render ne relance rien.
-  const nav = useRef<{ k: string; route: Route; dir: -1 | 0 | 1; leave: { route: Route; key: string; top: number } | null; id: number }>({ k: routeKey(route), route, dir: 0, leave: null, id: 0 });
+  const nav = useRef<{ k: string; route: Route; dir: -1 | 0 | 1; kind: "fade" | "slide" | undefined; leave: { route: Route; key: string; top: number } | null; id: number }>({ k: routeKey(route), route, dir: 0, kind: undefined, leave: null, id: 0 });
   if (nav.current.k !== routeKey(route)) {
     const old = nav.current;
     const dir = subviewDir(old.route.name, route.name);
-    nav.current = { k: routeKey(route), route, dir, id: old.id + 1, leave: dir ? { route: old.route, key: `${routeKey(old.route)}:${theme}`, top: -window.scrollY } : null };
+    // onglet du bas différent : fondu croisé ; même onglet (pilules du haut) : le contenu glisse sous le bandeau fixe
+    const kind = dir ? (sectionOf(old.route) === sectionOf(route) ? "slide" : "fade") : undefined;
+    nav.current = { k: routeKey(route), route, dir, kind, id: old.id + 1, leave: dir ? { route: old.route, key: `${routeKey(old.route)}:${theme}`, top: -window.scrollY } : null };
   }
   const [doneId, setDoneId] = useState(0);
-  const { dir, leave, id } = nav.current;
+  const { dir, kind, leave, id } = nav.current;
   const leaving = leave && doneId !== id ? leave : null;
   usePageSwipe();
   useEdgeFades();
@@ -80,10 +72,6 @@ function Shell() {
     const t = window.setTimeout(() => setDoneId(id), 900); // filet de sécurité si l'animation ne se termine pas
     return () => window.clearTimeout(t);
   }, [leave, id]);
-  useEffect(() => {
-    const t = window.setTimeout(preload, 600);
-    return () => window.clearTimeout(t);
-  }, []);
 
   // On retrouve la position de la liste en revenant d'une sortie ; sinon on remonte en haut.
   useLayoutEffect(() => {
@@ -100,7 +88,7 @@ function Shell() {
       <div className="hk-pager relative min-w-0 flex-1">
         {[
           leaving && (
-            <main key={leaving.key} aria-hidden data-role="out" data-dir={dir || undefined} className={cls} style={{ top: leaving.top }} {...({ inert: "" } as object)}>
+            <main key={leaving.key} aria-hidden data-role="out" data-dir={dir || undefined} data-kind={kind} className={cls} style={{ top: kind === "slide" ? 0 : leaving.top }} {...({ inert: "" } as object)}>
               <Suspense fallback={null}>
                 <View route={leaving.route} />
               </Suspense>
@@ -111,7 +99,8 @@ function Shell() {
             data-section={sectionOf(route)}
             data-role="in"
             data-dir={dir || undefined}
-            onAnimationEnd={(e) => { if (e.target === e.currentTarget) setDoneId(id); }}
+            data-kind={kind}
+            onAnimationEnd={(e) => { if (/^(lf-in|sl-in)/.test(e.animationName)) setDoneId(id); }}
             className={`${dir ? "" : "page-in"} ${cls}`}
           >
             <Suspense fallback={<div className="min-h-[60vh]" aria-busy="true" />}>

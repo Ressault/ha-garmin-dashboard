@@ -142,29 +142,51 @@ export function Chip({ href, icon, label, value, current }: { href: string; icon
     </a>
   );
 }
+// Le bandeau reste en place d'une pilule à l'autre (le contenu dessous glisse) : on garde la position du reflet
+// et le défilement de la rangée précédente (même bandeau = même libellé) pour les faire glisser vers la pilule active.
+let last: { label: string; x: number; w: number; scroll: number; t: number } | null = null;
+
 export function ChipRow({ children, label }: { children: ReactNode; label: string }) {
   const ref = useRef<HTMLElement>(null);
   const glide = useRef<HTMLSpanElement>(null);
   useScrubNav(ref, "a.hk-chip");
-  // Chaque page a sa propre rangée : elle arrive déjà centrée sur l'onglet actif, reflet en place.
-  // Le glissement de page fait le mouvement ; rien ne bouge à l'intérieur de la rangée.
   useLayoutEffect(() => {
     const row = ref.current, g = glide.current;
     const cur = row?.querySelector<HTMLElement>('[aria-current="page"]');
     if (!row || !cur || !g) return;
-    const place = () => {
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const rect = () => {
       const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
-      row.scrollLeft = Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
-      const n = cur.getBoundingClientRect(), r2 = row.getBoundingClientRect();
-      g.style.width = `${n.width}px`;
-      g.style.transform = `translateX(${n.left - r2.left + row.scrollLeft}px)`;
+      return { r, c, x: c.left - r.left + row.scrollLeft, w: c.width };
     };
-    place();
-    const id = requestAnimationFrame(place); // polices et images chargées : on recale une fois
-    return () => cancelAnimationFrame(id);
+    const target = () => {
+      const { r, c } = rect();
+      return Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
+    };
+    const from = last && last.label === label && performance.now() - last.t < 4000 ? last : null;
+    if (from) row.scrollLeft = Math.min(from.scroll, row.scrollWidth - row.clientWidth);
+    row.scrollTo({ left: target(), behavior: from && !reduce ? "smooth" : "auto" });
+    const to = rect();
+    g.style.transition = "none";
+    g.style.width = `${from ? from.w : to.w}px`;
+    g.style.transform = `translateX(${from ? from.x : to.x}px)`;
+    void g.offsetWidth;
+    g.style.transition = "";
+    g.style.width = `${to.w}px`;
+    g.style.transform = `translateX(${to.x}px)`;
+    last = { label, x: to.x, w: to.w, scroll: row.scrollLeft, t: performance.now() };
+    const id = requestAnimationFrame(() => { // recalage unique une fois les polices posées
+      if (!from) row.scrollLeft = target();
+      const n = rect();
+      g.style.transform = `translateX(${n.x}px)`;
+      last = { label, x: n.x, w: n.w, scroll: row.scrollLeft, t: performance.now() };
+    });
+    const onScroll = () => { if (last) last.scroll = row.scrollLeft; };
+    row.addEventListener("scroll", onScroll, { passive: true });
+    return () => { cancelAnimationFrame(id); row.removeEventListener("scroll", onScroll); };
   }, []);
   return (
-    <nav ref={ref} aria-label={label} className="hk-scroll hk-carousel -mx-4 px-4 pb-0.5 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
+    <nav ref={ref} aria-label={label} data-fixed className="hk-scroll hk-carousel -mx-4 px-4 pb-0.5 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
       <span ref={glide} aria-hidden className="hk-chip-glide" />
       {children}
     </nav>

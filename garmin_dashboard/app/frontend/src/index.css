@@ -346,7 +346,8 @@ input.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(10 1
 }
 
 /* Fond de page teinté par section (le haut prend la couleur de la rubrique) */
-.hk-page { --tint: #3e62ff; background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 9%, var(--background)) 0, var(--background) 420px); }
+.hk-page { --tint: #3e62ff; position: relative; isolation: isolate; }
+.hk-page::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 420px; z-index: -1; pointer-events: none; border-radius: inherit; background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 9%, transparent) 0, transparent 100%); }
 
 .hk-card {
   display: block;
@@ -509,7 +510,7 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
   position: absolute; z-index: 0; top: 0; left: 0; height: 60px; border-radius: 20px; pointer-events: none;
   background: var(--glass-bg); backdrop-filter: blur(24px) saturate(180%);
   box-shadow: inset 0 1px 0 0 var(--glass-hi), inset 0 0 0 1px rgb(10 132 255 / 0.4), 0 8px 24px -4px var(--glass-shadow);
-  transition: none;
+  transition: transform 380ms var(--ease-ios), width 380ms var(--ease-ios);
 }
 @media (prefers-reduced-motion: reduce) { .hk-chip-glide { transition: none; } }
 
@@ -520,32 +521,41 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
 /* visuel de pilule : 34 px (≈30 px d origine × 1,12) */
 .hk-chip-ico { display: flex; flex: none; align-items: center; justify-content: center; zoom: 1.12; }
 
-/* Transition entre pages (iOS) : la page qui sort recule de 30 % en s'assombrissant pendant que la suivante la recouvre.
-   Courbe de l'écran de navigation iOS : aucun rebond. Les deux pages glissent ensemble, rien d'autre ne bouge. */
+/* Navigation façon Santé.
+   • Onglet du bas différent : fondu croisé de 150 ms, aucun déplacement.
+   • Pilule du haut (même onglet) : le bandeau reste fixe, le contenu dessous glisse bord à bord sur le même plan
+     (l'ancien sort pendant que le nouveau entre, côte à côte, sans superposition ni ombre).
+   • Fond : un seul fond neutre ; seul le halo coloré du haut se fond d'une page à l'autre. */
 :root { --ease-ios: cubic-bezier(0.32, 0.72, 0, 1); }
+.hk-pager { overflow-x: clip; background: var(--background); }
 .hk-layer[data-role="out"] { position: absolute; left: 0; right: 0; pointer-events: none; }
-.hk-pager { overflow-x: clip; }
-@keyframes pg-in-from-right { from { transform: translate3d(100%, 0, 0); } }
-@keyframes pg-in-from-left { from { transform: translate3d(-100%, 0, 0); } }
-@keyframes pg-out-to-left { to { transform: translate3d(-30%, 0, 0); } }
-@keyframes pg-out-to-right { to { transform: translate3d(30%, 0, 0); } }
-@keyframes pg-dim { to { opacity: 0.16; } }
-.hk-layer[data-role="in"][data-dir="1"] { animation: pg-in-from-right 440ms var(--ease-ios) both; }
-.hk-layer[data-role="in"][data-dir="-1"] { animation: pg-in-from-left 440ms var(--ease-ios) both; }
-.hk-layer[data-role="out"][data-dir="1"] { animation: pg-out-to-left 440ms var(--ease-ios) both; }
-.hk-layer[data-role="out"][data-dir="-1"] { animation: pg-out-to-right 440ms var(--ease-ios) both; }
-.hk-layer[data-role="in"][data-dir="1"] { box-shadow: -10px 0 28px -10px rgb(0 0 0 / 0.22); }
-.hk-layer[data-role="in"][data-dir="-1"] { box-shadow: 10px 0 28px -10px rgb(0 0 0 / 0.22); }
-.hk-layer[data-role="out"]::after { content: ""; position: absolute; inset: 0; background: #000; opacity: 0; animation: pg-dim 440ms var(--ease-ios) both; }
-/* la page qui entre est déjà posée : pas de seconde animation d'apparition à l'intérieur pendant qu'elle glisse */
-.hk-layer[data-role="in"][data-dir] .hero-in, .hk-layer[data-role="in"][data-dir] .hk-stagger > * { animation: none; }
-/* ordinateur : l'ancienne page disparaît, la nouvelle apparaît en fondu */
-@media (min-width: 768px) {
-  .hk-layer[data-role="out"] { display: none; }
-  .hk-layer[data-role="in"][data-dir] { animation: page-fade 220ms ease-out both; }
-}
+@keyframes lf-in { from { opacity: 0; } }
+@keyframes lf-out { to { opacity: 0; } }
+@keyframes sl-in-r { from { transform: translate3d(100vw, 0, 0); } }
+@keyframes sl-in-l { from { transform: translate3d(-100vw, 0, 0); } }
+@keyframes sl-out-l { to { transform: translate3d(-100vw, 0, 0); } }
+@keyframes sl-out-r { to { transform: translate3d(100vw, 0, 0); } }
+@keyframes halo-in { from { opacity: 0; } }
+@keyframes halo-out { to { opacity: 0; } }
+/* onglets du bas */
+.hk-layer[data-kind="fade"][data-role="in"] { animation: lf-in 150ms ease-out both; }
+.hk-layer[data-kind="fade"][data-role="out"] { animation: lf-out 150ms ease-out both; }
+/* pilules du haut : tout ce qui suit le bandeau glisse ; le titre et le bandeau ne bougent pas */
+.hk-layer[data-kind="slide"][data-role="out"] .hk-page > * { visibility: hidden; }
+.hk-layer[data-kind="slide"][data-role="out"] .hk-page > [data-fixed] ~ * { visibility: visible; }
+.hk-layer[data-kind="slide"][data-role="in"][data-dir="1"] .hk-page > [data-fixed] ~ * { animation: sl-in-r 380ms var(--ease-ios) both; }
+.hk-layer[data-kind="slide"][data-role="in"][data-dir="-1"] .hk-page > [data-fixed] ~ * { animation: sl-in-l 380ms var(--ease-ios) both; }
+.hk-layer[data-kind="slide"][data-role="out"][data-dir="1"] .hk-page > [data-fixed] ~ * { animation: sl-out-l 380ms var(--ease-ios) both; }
+.hk-layer[data-kind="slide"][data-role="out"][data-dir="-1"] .hk-page > [data-fixed] ~ * { animation: sl-out-r 380ms var(--ease-ios) both; }
+.hk-layer[data-kind] .hk-stagger > * { animation: none; }
+/* halo coloré : fondu progressif d'une page à l'autre */
+.hk-layer[data-kind="slide"][data-role="in"] .hk-page::before { animation: halo-in 380ms ease-out both; }
+.hk-layer[data-kind="slide"][data-role="out"] .hk-page::before { animation: halo-out 380ms ease-out both; }
+.hk-layer[data-kind="slide"][data-role="in"] { animation: sl-in-done 380ms linear both; }
+@keyframes sl-in-done { from { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .hk-layer[data-role="out"] { display: none; }
-  .hk-layer[data-role="in"][data-dir] { animation: page-fade 160ms ease-out both; }
+  .hk-layer[data-kind="slide"] .hk-page > * { animation: none !important; visibility: visible !important; }
+  .hk-layer[data-kind="slide"][data-role="out"] { animation: lf-out 120ms ease-out both; }
+  .hk-layer[data-kind="slide"][data-role="in"] { animation: lf-in 120ms ease-out both; }
 }
 body { overflow-x: clip; }
