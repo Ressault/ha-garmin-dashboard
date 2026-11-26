@@ -324,8 +324,13 @@ input.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(10 1
   --ok: #248a3d;
   --warn: #a24600;
   --info: #0a55b8;
+  /* couleurs système iOS (séries des graphiques), variantes sombres plus bas */
+  --sys-red: #ff3b30; --sys-orange: #ff9500; --sys-green: #34c759; --sys-teal: #30b0c7;
+  --sys-blue: #007aff; --sys-indigo: #5856d6; --sys-purple: #af52de; --sys-pink: #ff2d55;
 }
 .dark {
+  --sys-red: #ff453a; --sys-orange: #ff9f0a; --sys-green: #30d158; --sys-teal: #40cbe0;
+  --sys-blue: #0a84ff; --sys-indigo: #5e5ce6; --sys-purple: #bf5af2; --sys-pink: #ff375f;
   --label2: #98989d;
   --label3: #8e8e93;
   --sep: rgb(84 84 88 / 0.45);

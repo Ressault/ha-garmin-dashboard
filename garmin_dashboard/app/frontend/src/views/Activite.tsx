@@ -53,7 +53,7 @@ function ActRow({ a }: { a: ActivityListItem }) {
   const meta = [
     a.distance_m ? `${nf(a.distance_m / 1000, 1)} km` : fmtHM(a.duration_s),
     a.distance_m && sp.value !== "—" ? `${sp.value} ${sp.unit}` : null,
-    a.avg_hr ? `${nf(a.avg_hr)} bpm` : null,
+    a.avg_hr ? `${nf(a.avg_hr)} BPM` : null,
     a.start_time_local.slice(11, 16),
   ].filter(Boolean).join(" · ");
   return (
@@ -208,7 +208,7 @@ export function Progres() {
             {dHalf != null && dHalf !== 0 && <p className="m-0 text-[15px] font-semibold" style={{ color: dHalf < 0 ? "var(--ok)" : "var(--warn)" }}>{dHalf < 0 ? "−" : "+"}{fmtHM(Math.abs(dHalf))} depuis ta première estimation</p>}
             {histHalf.length > 2 && (
               <div className="mt-2">
-                <AreaLine points={histHalf.map(([i, v]) => [i, -v] as [number, number])} xMax={histHalf.length - 1} yMin={-Math.max(...histHalf.map((h) => h[1])) - 1} yMax={-Math.min(...histHalf.map((h) => h[1])) + 1} color="#AF52DE" height={80} xLabels={[{ x: 0, t: shortDay(p.history.find((h) => h.time_half_s != null)!.date) }, { x: histHalf.length - 1, t: "auj." }]} label="Évolution du chrono prévu sur semi (plus haut = plus rapide)" />
+                <AreaLine points={histHalf.map(([i, v]) => [i, -v] as [number, number])} xMax={histHalf.length - 1} yMin={-Math.max(...histHalf.map((h) => h[1])) - 1} yMax={-Math.min(...histHalf.map((h) => h[1])) + 1} color="var(--sys-purple)" height={80} xLabels={[{ x: 0, t: shortDay(p.history.find((h) => h.time_half_s != null)!.date) }, { x: histHalf.length - 1, t: "auj." }]} label="Évolution du chrono prévu sur semi (plus haut = plus rapide)" />
               </div>
             )}
             <Hr />
@@ -222,7 +222,7 @@ export function Progres() {
             <Card>
               <div className="flex items-baseline justify-between"><Lbl>Course et trail · par semaine</Lbl><Sm>km</Sm></div>
               <div className="mt-3">
-                <Bars height={150} items={ws.slice(-8).map((x, i, arr) => ({ label: i === 0 || parseDay(x.week).getDate() <= 7 ? shortDay(x.week) : String(parseDay(x.week).getDate()), value: x.km, strong: i < arr.length - 1 }))} color="#FF2D55" light="#FFB3C1" label="Kilomètres de course et trail par semaine" />
+                <Bars height={150} items={ws.slice(-8).map((x, i, arr) => ({ label: i === 0 || parseDay(x.week).getDate() <= 7 ? shortDay(x.week) : String(parseDay(x.week).getDate()), value: x.km, strong: i < arr.length - 1 }))} color="var(--sys-pink)" light="#FFB3C1" label="Kilomètres de course et trail par semaine" />
               </div>
               {avg4 != null && <P className="mt-1.5">Moyenne de {nf(avg4)} km sur les 4 dernières semaines complètes. La semaine en cours est en clair.</P>}
             </Card>
@@ -285,9 +285,9 @@ export function Entrainement() {
             <p className="m-0 mt-1.5 flex items-baseline gap-2"><Val size={30}>{nf(e.current)}</Val>{lo != null && hi != null && <Sm className="text-[15px]">habituel : {nf(lo)}–{nf(hi)}</Sm>}</p>
             <div className="mt-2.5"><EffortChart current={e.cumulative.current} previous={e.cumulative.previous} lo={e.typical.lo} hi={e.typical.hi} /></div>
             <div className="flex flex-nowrap gap-x-3 whitespace-nowrap text-[12px] text-label2">
-              <span><span aria-hidden className="mr-1.5 inline-block h-[3px] w-3.5 rounded bg-[#0A84FF] align-middle" />cette semaine</span>
+              <span><span aria-hidden className="mr-1.5 inline-block h-[3px] w-3.5 rounded bg-[var(--sys-blue)] align-middle" />cette semaine</span>
               <span><span aria-hidden className="mr-1.5 inline-block w-3.5 border-t-2 border-dashed border-label2 align-middle opacity-80" />sem. passée {nf(e.previous_total)}</span>
-              <span><span aria-hidden className="mr-1.5 inline-block h-2.5 w-3 rounded-sm bg-[#3E8EF7]/15 align-middle" />habituel</span>
+              <span><span aria-hidden className="mr-1.5 inline-block h-2.5 w-3 rounded-sm bg-[var(--sys-blue)]/15 align-middle" />habituel</span>
             </div>
           </Card>
         ) : <Skel h={300} />}
@@ -303,7 +303,7 @@ export function Entrainement() {
                     <span className="text-[15px] font-bold">{zz.z}</span>
                     <span className="relative h-[22px] rounded-[7px] bg-fill2">
                       <span className="bar-fill absolute inset-y-0 left-0 rounded-[7px]" style={{ width: `${(zc[i] / zmax) * 100}%`, background: zz.c }} />
-                      <span className="absolute -top-[3px] -bottom-[3px] w-0.5 rounded bg-foreground/55" style={{ left: `${(zp[i] / zmax) * 100}%` }} />
+                      <span className="absolute -top-[3px] -bottom-[3px] w-[2px] -translate-x-1/2 rounded bg-foreground/40 shadow-[0_0_0_1.5px_var(--card)]" style={{ left: `${(zp[i] / zmax) * 100}%` }} />
                     </span>
                     <span className="text-right tabular-nums">
                       <span className="block text-[15px] font-semibold">{nf(zc[i])} %</span>
@@ -313,7 +313,7 @@ export function Entrainement() {
                 );
               })}
             </div>
-            <Sm className="mt-1.5"><span aria-hidden className="mr-1.5 inline-block h-2.5 w-0.5 bg-foreground/55 align-[-1px]" />repère = les 4 semaines précédentes</Sm>
+            <Sm className="mt-1.5"><span aria-hidden className="mr-1.5 inline-block h-2.5 w-[2px] rounded bg-foreground/40 align-[-1px]" />repère = les 4 semaines précédentes</Sm>
             <Hr />
             <P>
               {Math.abs(hiShift) >= 2 ? `Les zones 4 et 5 ont ${hiShift > 0 ? "gagné" : "perdu"} ${nf(Math.abs(hiShift))} points. ` : "Ta répartition est stable. "}
@@ -326,7 +326,7 @@ export function Entrainement() {
             <div className="flex items-center justify-between"><Lbl>Condition physique</Lbl>{gain != null && <Badge tone={gain >= 0 ? "green" : "gray"}>{gain >= 0 ? "+" : "−"}{nf(Math.abs(gain))} en 6 sem.</Badge>}</div>
             <p className="m-0 mt-1.5 flex items-baseline gap-2"><Val size={30}>{nf(latest.ctl)}</Val><Sm className="text-[15px]">forme (CTL)</Sm></p>
             <div className="mt-2.5">
-              <AreaLine points={ctlPts} xMax={ctlPts[ctlPts.length - 1][0]} yMin={Math.min(...ctlPts.map((p) => p[1])) - 8} yMax={Math.max(...ctlPts.map((p) => p[1])) + 6} color="#3E62FF" height={130} xLabels={[{ x: 0, t: shortDay(series[0].date) }, { x: ctlPts[ctlPts.length - 1][0], t: "auj." }]} label="Condition physique sur 6 semaines" />
+              <AreaLine points={ctlPts} xMax={ctlPts[ctlPts.length - 1][0]} yMin={Math.min(...ctlPts.map((p) => p[1])) - 8} yMax={Math.max(...ctlPts.map((p) => p[1])) + 6} color="var(--sys-indigo)" height={130} xLabels={[{ x: 0, t: shortDay(series[0].date) }, { x: ctlPts[ctlPts.length - 1][0], t: "auj." }]} label="Condition physique sur 6 semaines" />
             </div>
           </Card>
         )}
@@ -334,7 +334,7 @@ export function Entrainement() {
           <Card>
             <div className="flex items-baseline justify-between"><Lbl>Charge par semaine</Lbl><Sm>en cours en clair</Sm></div>
             <div className="mt-2.5">
-              <Bars height={120} items={e.weeks.slice(-8).map((x, i, arr) => ({ label: i === 0 || parseDay(x.week).getDate() <= 7 ? shortDay(x.week) : String(parseDay(x.week).getDate()), value: x.load, strong: i < arr.length - 1 }))} color="#0A84FF" light="#9EC5FF" label="Charge d'entraînement par semaine" />
+              <Bars height={120} items={e.weeks.slice(-8).map((x, i, arr) => ({ label: i === 0 || parseDay(x.week).getDate() <= 7 ? shortDay(x.week) : String(parseDay(x.week).getDate()), value: x.load, strong: i < arr.length - 1 }))} color="var(--sys-blue)" light="#9EC5FF" label="Charge d'entraînement par semaine" />
             </div>
           </Card>
         )}

@@ -143,7 +143,7 @@ function LastActivity({ a }: { a: ActivityListItem }) {
   const rows = [
     a.distance_m ? [GROUP_META[g].color, `${nf(a.distance_m / 1000, 1)} km`] : null,
     sp.value !== "—" ? ["#34C759", `${sp.value} ${sp.unit}`] : ["#34C759", fmtHM(a.duration_s)],
-    a.avg_hr ? ["#00AFCA", `${nf(a.avg_hr)} bpm`] : null,
+    a.avg_hr ? ["#00AFCA", `${nf(a.avg_hr)} BPM`] : null,
   ].filter(Boolean) as [string, string][];
   return (
     <Card tint="red" href={`#/activity/${a.activity_id}`} label={`Dernière activité : ${a.name ?? ""}, ouvrir le détail`}>
@@ -278,7 +278,7 @@ function BodyBattery({ latest, points }: { latest: FitnessDay; points: [number, 
       </div>
       {points.length > 1 && (
         <div className="mt-1.5">
-          <AreaLine points={points} xMax={1440} yMin={0} yMax={100} color="#30B0C7" xLabels={[{ x: 0, t: "0 h" }, { x: 720, t: "12 h" }, { x: 1440, t: "24 h" }]} label="Body Battery de la journée" />
+          <AreaLine points={points} xMax={1440} yMin={0} yMax={100} color="var(--sys-teal)" xLabels={[{ x: 0, t: "0 h" }, { x: 720, t: "12 h" }, { x: 1440, t: "24 h" }]} label="Body Battery de la journée" />
         </div>
       )}
     </Card>
@@ -319,7 +319,7 @@ export function ShortcutChips({ current }: { current?: string }) {
     <ChipRow label="Raccourcis">
       <Chip href={PATH.piliers} current={current === "piliers"} icon={<MiniPillars colors={colors} />} label="Mes piliers" value={colors.length ? `${greens} sur 4 au vert` : "—"} />
       <Chip href={PATH.sommeil} current={current === "sommeil"} icon={<MiniSleep score={l?.sleep_score != null ? Math.round(l.sleep_score) : null} />} label="Sommeil" value={sleepLabel} />
-      <Chip href={PATH.forme} current={current === "forme"} icon={<MiniHeart />} label="Forme et santé" value={l?.resting_hr != null ? `${nf(l.resting_hr)} bpm` : "—"} />
+      <Chip href={PATH.forme} current={current === "forme"} icon={<MiniHeart />} label="Forme et santé" value={l?.resting_hr != null ? `${nf(l.resting_hr)} BPM` : "—"} />
       <Chip href={PATH.progres} icon={<MiniTrend />} label="Progrès" value={half ? `Semi ${fmtClock(half).slice(0, -3)}` : "—"} />
     </ChipRow>
   );

@@ -180,7 +180,7 @@ export function DashBand({ values, band, lo = 40, hi = 75, caption, label }: { v
   const y = (v: number) => 5 + (H - 10) - ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * (H - 10);
   return (
     <svg ref={ref} width="100%" height="86" viewBox={`0 0 ${W} 86`} role="img" aria-label={label}>
-      <rect x="0" y={y(band[1])} width={W} height={y(band[0]) - y(band[1])} rx="8" fill="#3E8EF7" fillOpacity=".12" />
+      <rect x="0" y={y(band[1])} width={W} height={y(band[0]) - y(band[1])} rx="8" fill="var(--sys-blue)" fillOpacity=".12" />
       {values.map((v, i) => v != null && <rect key={i} x={i * step + 3} y={y(v) - 5} width={step - 6} height="10" rx="5" fill={v < band[0] ? "#FF9F0A" : v > band[1] ? "#64B5FF" : "#0A84FF"} />)}
       <text x="0" y="82" fontSize="11" className={T}>{caption}</text>
     </svg>
@@ -202,12 +202,12 @@ export function LoadChart({ ctl, atl, tsb, labels }: { ctl: (number | null)[]; a
   const line = (arr: (number | null)[], Y: (v: number) => number) => pathOf(arr.map((v, i) => (v == null ? null : [X(i), Y(v)])).filter(Boolean) as [number, number][]);
   return (
     <svg ref={ref} width="100%" height="190" viewBox={`0 0 ${W} 190`} role="img" aria-label="Forme et fatigue en haut, fraîcheur en bas">
-      <path d={line(atl, Y1)} fill="none" stroke="#FF6B5E" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-      <path d={line(ctl, Y1)} fill="none" stroke="#3E62FF" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-      <rect x="0" y={Y2(-10)} width={W} height={Y2(-30) - Y2(-10)} fill="#34C759" fillOpacity=".14" />
-      <text x="4" y={Y2(-10) - 4} fontSize="11" fill="#34A853">zone de progression</text>
+      <path d={line(atl, Y1)} fill="none" stroke="var(--sys-red)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={line(ctl, Y1)} fill="none" stroke="var(--sys-indigo)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+      <rect x="0" y={Y2(-10)} width={W} height={Y2(-30) - Y2(-10)} fill="var(--sys-green)" fillOpacity=".14" />
+      <text x="4" y={Y2(-10) - 4} fontSize="11" fill="var(--sys-green)">zone de progression</text>
       <line x1="0" y1={Y2(0)} x2={W} y2={Y2(0)} className="stroke-sep" strokeDasharray="3 4" />
-      <path d={line(tsb, Y2)} fill="none" stroke="#34A853" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={line(tsb, Y2)} fill="none" stroke="var(--sys-green)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
       <text x="0" y="184" fontSize="11" className={T}>{labels[0]}</text>
       <text x={W} y="184" fontSize="11" textAnchor="end" className={T}>{labels[1]}</text>
     </svg>
@@ -332,8 +332,8 @@ export function HourRanges({ hours, label }: { hours: ([number, number] | null)[
           <text x={W} y={y(v) - 3} fontSize="10" textAnchor="end" className={T}>{v}</text>
         </g>
       ))}
-      {hours.map((h, i) => h && <rect key={i} x={i * step + step / 2 - 3.5} y={y(h[1])} width="7" height={Math.max(y(h[0]) - y(h[1]), 7)} rx="3.5" fill="#FF2D55" opacity={h[1] > 120 ? 1 : 0.42} />)}
-      {peak >= 0 && <circle cx={peak * step + step / 2} cy={y(peakV)} r="5" fill="#FF2D55" className="stroke-card" strokeWidth="2" />}
+      {hours.map((h, i) => h && <rect key={i} x={i * step + step / 2 - 3.5} y={y(h[1])} width="7" height={Math.max(y(h[0]) - y(h[1]), 7)} rx="3.5" fill="var(--sys-pink)" opacity={h[1] > 120 ? 1 : 0.42} />)}
+      {peak >= 0 && <circle cx={peak * step + step / 2} cy={y(peakV)} r="5" fill="var(--sys-pink)" className="stroke-card" strokeWidth="2" />}
       {[["0 h", 0], ["6 h", 6], ["12 h", 12], ["18 h", 18], ["24 h", 24]].map(([t, h], i) => (
         <text key={i} x={(Number(h) / 24) * W} y="144" fontSize="11" textAnchor={i === 0 ? "start" : i === 4 ? "end" : "middle"} className={T}>{t}</text>
       ))}
@@ -350,10 +350,10 @@ export function EffortChart({ current, previous, lo, hi }: { current: number[]; 
   const last = current.length - 1;
   return (
     <svg ref={ref} width="100%" height="150" viewBox={`0 0 ${W} 150`} role="img" aria-label="Effort cumulé cette semaine comparé à la semaine dernière et à ta fourchette habituelle">
-      {band && <path d={band} fill="#3E8EF7" fillOpacity=".12" />}
+      {band && <path d={band} fill="var(--sys-blue)" fillOpacity=".12" />}
       <path d={smoothPath(previous.map((v, i) => [X(i), Y(v)]))} fill="none" className="stroke-label2" strokeOpacity=".7" strokeWidth="2" strokeDasharray="4 4" />
-      {current.length > 0 && <path d={smoothPath(current.map((v, i) => [X(i), Y(v)]))} fill="none" stroke="#0A84FF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
-      {last >= 0 && <circle cx={X(last)} cy={Y(current[last])} r="5.5" fill="#0A84FF" className="stroke-card" strokeWidth="2" />}
+      {current.length > 0 && <path d={smoothPath(current.map((v, i) => [X(i), Y(v)]))} fill="none" stroke="var(--sys-blue)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+      {last >= 0 && <circle cx={X(last)} cy={Y(current[last])} r="5.5" fill="var(--sys-blue)" className="stroke-card" strokeWidth="2" />}
       {["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."].map((d, i) => (
         <text key={d} x={i === 6 ? W : X(i)} y="146" fontSize="11" textAnchor={i === 0 ? "start" : i === 6 ? "end" : "middle"} className={T}>{d}</text>
       ))}
@@ -415,7 +415,7 @@ export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fm
           <text x={L} y={Y(v) - 4} fontSize="10.5" fill="var(--label2)">{fmtY(v)}</text>
         </g>
       ))}
-      {d && <path d={d} fill="none" stroke="#3E8EF7" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />}
+      {d && <path d={d} fill="none" stroke="var(--sys-blue)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />}
       {pts.filter((p) => p.medal == null).map((p, i) => (
         <circle key={i} cx={X(p.t)} cy={Y(p.v)} r="3.6" fill="var(--card)" stroke="var(--label2)" strokeWidth="1.6" />
       ))}

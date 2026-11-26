@@ -20,7 +20,7 @@ function LonChips({ current }: { current: "piliers" | "sommeil" | "forme" }) {
     <ChipRow label="Sections de Longévité">
       <Chip href={PATH.piliers} current={current === "piliers"} icon={<MiniPillars colors={colors} />} label="Mes piliers" value={colors.length ? `${greens} sur 4 au vert` : "—"} />
       <Chip href={PATH.sommeil} current={current === "sommeil"} icon={<MiniSleep score={l?.sleep_score != null ? Math.round(l.sleep_score) : null} />} label="Sommeil" value={sleepLabel} />
-      <Chip href={PATH.forme} current={current === "forme"} icon={<MiniHeart />} label="Forme et santé" value={l?.resting_hr != null ? `${nf(l.resting_hr)} bpm` : "—"} />
+      <Chip href={PATH.forme} current={current === "forme"} icon={<MiniHeart />} label="Forme et santé" value={l?.resting_hr != null ? `${nf(l.resting_hr)} BPM` : "—"} />
     </ChipRow>
   );
 }
@@ -199,7 +199,7 @@ function TonightCard({ s }: { s: SleepDetails }) {
         {b0 != null && <rect x={X(b0)} y="30" width={Math.max(X(b1 ?? b0 + 50) - X(b0), 22)} height="22" rx="11" fill="#5E6BFF" />}
         {b0 != null && <text x={X(b0)} y="20" fontSize="12" fontWeight="600" fill="#5E6BFF">Coucher {minToClock(b0)} – {minToClock(b1 ?? b0 + 50)}</text>}
         <text x={Math.min(X(wake), 322)} y="20" fontSize="12" fontWeight="600" fill="#E07A00" textAnchor="end">Réveil ≈ {minToClock(wake)}</text>
-        <circle cx={Math.min(X(wake), 315)} cy="41" r="7" fill="#FF9F0A" className="stroke-card" strokeWidth="2.5" />
+        <circle cx={Math.min(X(wake), 315)} cy="41" r="7" fill="var(--sys-orange)" className="stroke-card" strokeWidth="2.5" />
         {[["22:00", 22 * 60], ["00:00", 0], ["02:00", 120], ["04:00", 240], ["06:00", 360], ["08:00", 480]].map(([t, m], i) => (
           <text key={i} x={i === 5 ? 322 : X(Number(m))} y="72" fontSize="11" textAnchor={i === 0 ? "start" : i === 5 ? "end" : "middle"} className="fill-label2">{t}</text>
         ))}
@@ -258,7 +258,7 @@ export function Sommeil() {
             <Hr />
             <div className="grid grid-cols-2 gap-3">
               <div><Sm>Moyenne 7 jours</Sm><Val size={18}>{nf(latest?.hrv_weekly_avg_ms)} ms</Val></div>
-              <div><Sm>FC pendant le sommeil</Sm><Val size={18}>{s?.avg_hr != null ? `${nf(s.avg_hr)} bpm` : "—"}</Val></div>
+              <div><Sm>FC pendant le sommeil</Sm><Val size={18}>{s?.avg_hr != null ? `${nf(s.avg_hr)} BPM` : "—"}</Val></div>
             </div>
           </Card>
           <SleepWeek series={series} />
@@ -296,7 +296,7 @@ export function Forme() {
         <div className="hk-ghost absolute h-[200px] w-[220px]" style={{ ["--beat" as string]: beat }} aria-hidden>
           <BigHeart id="hg1" />
         </div>
-        <div className="hk-beat relative h-[200px] w-[220px]" style={{ ["--beat" as string]: beat }} role="img" aria-label={`Fréquence cardiaque au repos ${bpm ?? "inconnue"} bpm`}>
+        <div className="hk-beat relative h-[200px] w-[220px]" style={{ ["--beat" as string]: beat }} role="img" aria-label={`Fréquence cardiaque au repos ${bpm ?? "inconnue"} BPM`}>
           <BigHeart id="hg2" />
           <div className="absolute inset-0 flex flex-col items-center justify-center pb-6 text-black">
             <span className="text-[58px] leading-none font-bold tracking-[-0.03em]">{bpm != null ? nf(bpm) : "–"}</span>
@@ -328,7 +328,7 @@ export function Forme() {
                 )}
               </div>
               <Val>{heart.min != null && heart.max != null ? `${heart.min}–${heart.max} BPM` : "—"}</Val>
-              <div className="mt-2.5"><HourRanges hours={heart.hours} label={`Fréquence cardiaque heure par heure, de ${heart.min} à ${heart.max} bpm`} /></div>
+              <div className="mt-2.5"><HourRanges hours={heart.hours} label={`Fréquence cardiaque heure par heure, de ${heart.min} à ${heart.max} BPM`} /></div>
               <Hr />
               <div className="grid grid-cols-2 gap-3">
                 <div><Sm style={{ color: "#C4002B", fontWeight: 600 }}>FC au repos</Sm><Val>{heart.resting != null ? `${heart.resting} BPM` : "—"}</Val><Sm>Moy. 7 j : {heart.resting_7d ?? "—"}</Sm></div>
@@ -340,7 +340,7 @@ export function Forme() {
             <Card>
               <div className="flex items-baseline justify-between"><Lbl>FC au repos · 6 semaines</Lbl><Badge tone="red">{bpm != null && bpm <= rhrBand[1] ? "Stable" : "En hausse"}</Badge></div>
               <div className="mt-2.5">
-                <LineBand values={rhr42.map((d) => d.resting_hr)} band={rhrBand} lo={rhrBand[0] - 8} hi={rhrBand[1] + 12} color="#FF2D55" bandText={`Ta plage ${rhrBand[0]}–${rhrBand[1]}`} labels={[shortDay(rhr42[0].date), "auj."]} label={`FC au repos sur 6 semaines, plage habituelle ${rhrBand[0]} à ${rhrBand[1]}`} />
+                <LineBand values={rhr42.map((d) => d.resting_hr)} band={rhrBand} lo={rhrBand[0] - 8} hi={rhrBand[1] + 12} color="var(--sys-pink)" bandText={`Ta plage ${rhrBand[0]}–${rhrBand[1]}`} labels={[shortDay(rhr42[0].date), "auj."]} label={`FC au repos sur 6 semaines, plage habituelle ${rhrBand[0]} à ${rhrBand[1]}`} />
               </div>
               {outlier && <P className="mt-1.5">Le pic à {nf(outlier.resting_hr)} du {shortDay(outlier.date)}{outlier.sleep_score != null && outlier.sleep_score < 50 ? ` suit une mauvaise nuit (score ${nf(outlier.sleep_score)})` : ""}. Depuis, tu restes {bpm != null && bpm <= rhrBand[1] ? "dans" : "proche de"} ta plage.</P>}
             </Card>
@@ -367,11 +367,11 @@ export function Forme() {
                 return (
                   <svg width="100%" height="44" viewBox="0 0 322 44" role="img" aria-label={`Score ${latest.endurance_score}${ec.next ? `, niveau ${ec.next.name} à ${ec.next.min}` : ""}`} className="mt-2">
                     <rect x="0" y="10" width="322" height="10" rx="5" className="fill-fill2" />
-                    <rect x="0" y="10" width={X(latest.endurance_score!)} height="10" rx="5" fill="#34C759" fillOpacity=".45" />
+                    <rect x="0" y="10" width={X(latest.endurance_score!)} height="10" rx="5" fill="var(--sys-green)" fillOpacity=".45" />
                     {ec.next && <line x1={X(ec.next.min)} y1="4" x2={X(ec.next.min)} y2="26" stroke="#1F7A35" strokeWidth="2" />}
-                    <circle cx={X(latest.endurance_score!)} cy="15" r="7" fill="#34C759" className="stroke-card" strokeWidth="2.5" />
+                    <circle cx={X(latest.endurance_score!)} cy="15" r="7" fill="var(--sys-green)" className="stroke-card" strokeWidth="2.5" />
                     {ec.cur && <text x={X(latest.endurance_score!) - 10} y="40" fontSize="11" textAnchor="end" className="fill-label2">{ec.cur.name}</text>}
-                    {ec.next && <text x={X(ec.next.min) + 6} y="40" fontSize="11" fontWeight="600" fill="#34A853">{ec.next.name} · {nf(ec.next.min)}</text>}
+                    {ec.next && <text x={X(ec.next.min) + 6} y="40" fontSize="11" fontWeight="600" fill="var(--sys-green)">{ec.next.name} · {nf(ec.next.min)}</text>}
                   </svg>
                 );
               })()}
@@ -382,10 +382,10 @@ export function Forme() {
               <Lbl>Mes seuils</Lbl>
               <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-3.5">
                 <div><Sm>Allure seuil</Sm><Val>{t.lt_pace ?? "—"}</Val></div>
-                <div><Sm>FC seuil</Sm><Val>{t.lthr_bpm != null ? `${nf(t.lthr_bpm)} bpm` : "—"}</Val></div>
+                <div><Sm>FC seuil</Sm><Val>{t.lthr_bpm != null ? `${nf(t.lthr_bpm)} BPM` : "—"}</Val></div>
                 <div><Sm>Puissance seuil course</Sm><Val>{t.run_ftp_w != null ? `${nf(t.run_ftp_w)} W` : "—"}</Val>{t.run_wkg != null && <Sm>{nf(t.run_wkg, 2)} W/kg</Sm>}</div>
                 <div><Sm>FTP vélo</Sm><Val>{t.bike_ftp_w != null ? `${nf(t.bike_ftp_w)} W` : "—"}</Val>{t.bike_ftp_stale ? <Sm style={{ color: "var(--warn)" }}>À mettre à jour</Sm> : null}</div>
-                <div><Sm>FC max.</Sm><Val>{t.max_hr_bpm != null ? `${nf(t.max_hr_bpm)} bpm` : "—"}</Val></div>
+                <div><Sm>FC max.</Sm><Val>{t.max_hr_bpm != null ? `${nf(t.max_hr_bpm)} BPM` : "—"}</Val></div>
               </div>
               {t.lt_date && <><Hr /><P>Mesuré le {shortDay(t.lt_date).replace(/\.$/, "")}, un test de seuil le met à jour.</P></>}
             </Card>
