@@ -13,8 +13,8 @@ export function useHealth() {
 }
 
 export function useActivities() {
-  // Tout l'historique depuis l'achat de la montre (2025)
-  const start = "2025-01-01";
+  // Tout l'historique depuis début novembre 2025
+  const start = "2025-11-01";
   return useQuery(`acts-${start}`, () => api.activities({ start, limit: 2000 }));
 }
 

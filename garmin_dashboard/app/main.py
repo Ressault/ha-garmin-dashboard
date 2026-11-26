@@ -62,7 +62,7 @@ LIST_COLS = (
 
 AUTO_SYNC_MINUTES = 20  # synchro légère (Body Battery, disponibilité, nouvelles sorties)
 FULL_SYNC_MINUTES = 60  # synchro complète (prédictions, seuils, historique de forme)
-HISTORY_START = date(2025, 1, 1)  # début de l'historique à charger (date d'achat de la montre)
+HISTORY_START = date(2025, 11, 1)  # début de l'historique à charger (date d'achat de la montre)
 
 
 def _auto_sync_loop() -> None:
