@@ -9,7 +9,7 @@ import { AreaLine, Bars, EffortChart, RecordChart, StackedDays, type RecordPoint
 import { useActivities, useHealth } from "@/ui/data";
 import { GROUP_META, GROUP_ORDER, groupOf, pct, totals, windows, type Group } from "@/ui/derive";
 import { GROUP_ICON, IGrid, ISearch, MiniList, MiniMedal, MiniPlan, MiniTrend, MiniZones } from "@/ui/icons";
-import { Badge, Card, Chip, ChipRow, TINT, Delta, Group as Rows, H2, Hero, Hr, Lbl, P, Page, Sm, Skel, Stagger, Title, Val } from "@/ui/kit";
+import { Badge, Card, Chip, ChipRow, TINT, Delta, Group as Rows, H2, Hero, Hr, Lbl, P, Page, Sm, Skel, Stagger, Val } from "@/ui/kit";
 
 export type Cur = "activites" | "progres" | "entrainement" | "records" | "plan";
 export function ActChips({ current }: { current: Cur }) {
@@ -36,7 +36,6 @@ export function ActChips({ current }: { current: Cur }) {
 export function Frame({ current, tint, children }: { current: Cur; tint: keyof typeof TINT; children: React.ReactNode }) {
   return (
     <Page tint={tint}>
-      <Title>Activité</Title>
       <ActChips current={current} />
       {children}
     </Page>
