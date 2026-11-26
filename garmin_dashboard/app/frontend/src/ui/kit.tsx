@@ -134,7 +134,7 @@ export function H2({ children, right }: { children: ReactNode; right?: ReactNode
 export function Chip({ href, icon, label, value, current }: { href: string; icon: ReactNode; label: string; value: ReactNode; current?: boolean }) {
   return (
     <a href={href} className="hk-chip hk-press" aria-current={current ? "page" : undefined}>
-      {icon}
+      <span className="hk-chip-ico">{icon}</span>
       <span>
         <span className="block text-[14px] leading-tight text-label2">{label}</span>
         <span className="block text-[16px] leading-tight font-semibold whitespace-nowrap">{value}</span>
@@ -145,26 +145,29 @@ export function Chip({ href, icon, label, value, current }: { href: string; icon
 // Position (dans le contenu de la rangée) de la pilule active de la page précédente : la rangée est recréée
 // à chaque page, on garde donc le point de départ pour faire glisser le reflet vers le nouvel onglet.
 let lastGlide: { x: number; w: number; t: number } | null = null;
+let lastScroll: number | null = null; // défilement de la rangée précédente : on repart de là puis on glisse vers l'onglet actif
 
 export function ChipRow({ children, label }: { children: ReactNode; label: string }) {
   const ref = useRef<HTMLElement>(null);
   const glide = useRef<HTMLSpanElement>(null);
   useScrubNav(ref, "a.hk-chip");
-  // La rangée est recréée à chaque page : on garde l'onglet actif visible et on fait glisser le reflet
+  // La rangée est recréée à chaque page : on garde l'onglet actif centré (défilement fluide) et on fait glisser le reflet
   useLayoutEffect(() => {
     const row = ref.current, g = glide.current;
     const cur = row?.querySelector<HTMLElement>('[aria-current="page"]');
     if (!row || !cur || !g) return;
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const rect = () => {
       const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
       return { r, c, x: c.left - r.left + row.scrollLeft, w: c.width };
     };
-    // centrage sur positions réelles à l'écran (offsetLeft dépend du parent positionné)
-    const center = () => {
+    const target = () => {
       const { r, c } = rect();
-      row.scrollLeft = Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
+      return Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
     };
-    center();
+    if (lastScroll != null) row.scrollLeft = Math.min(lastScroll, row.scrollWidth - row.clientWidth);
+    const center = (smooth: boolean) => row.scrollTo({ left: target(), behavior: smooth && !reduce ? "smooth" : "auto" });
+    center(lastScroll != null);
     const to = rect();
     const from = lastGlide && performance.now() - lastGlide.t < 4000 ? lastGlide : null;
     g.style.transition = "none";
@@ -176,12 +179,14 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
     g.style.transform = `translateX(${to.x}px)`;
     lastGlide = { x: to.x, w: to.w, t: performance.now() };
     const id = requestAnimationFrame(() => {
-      center();
+      if (lastScroll == null) center(false);
       const n = rect();
       g.style.transform = `translateX(${n.x}px)`;
       lastGlide = { x: n.x, w: n.w, t: performance.now() };
     });
-    return () => cancelAnimationFrame(id);
+    const onScroll = () => { lastScroll = row.scrollLeft; };
+    row.addEventListener("scroll", onScroll, { passive: true });
+    return () => { cancelAnimationFrame(id); row.removeEventListener("scroll", onScroll); };
   }, []);
   return (
     <nav ref={ref} aria-label={label} className="hk-scroll hk-carousel -mx-4 px-4 pb-0.5 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">

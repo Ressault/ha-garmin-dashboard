@@ -363,8 +363,8 @@ a.hk-card:active, button.hk-card:active, a.hk-press:active, button.hk-press:acti
 a.hk-card:focus-visible, a.hk-press:focus-visible, button.hk-press:focus-visible { outline: 3px solid rgb(10 132 255 / 0.5); outline-offset: 2px; }
 
 .hk-chip {
-  display: flex; align-items: center; gap: 10px; flex: none;
-  height: 56px; padding: 0 14px 0 10px; border-radius: 18px;
+  display: flex; align-items: center; gap: 12px; flex: none;
+  height: 60px; padding: 0 18px 0 14px; border-radius: 20px;
   background: var(--chip); border: 1px solid var(--sep); color: var(--foreground);
 }
 .hk-chip { position: relative; z-index: 1; background: color-mix(in srgb, var(--card) 55%, transparent); backdrop-filter: blur(12px) saturate(160%); }
@@ -507,7 +507,7 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
 
 /* reflet glissant sous l'onglet actif de la rangée du haut */
 .hk-chip-glide {
-  position: absolute; z-index: 0; top: 0; left: 0; height: 56px; border-radius: 18px; pointer-events: none;
+  position: absolute; z-index: 0; top: 0; left: 0; height: 60px; border-radius: 20px; pointer-events: none;
   background: var(--glass-bg); backdrop-filter: blur(24px) saturate(180%);
   box-shadow: inset 0 1px 0 0 var(--glass-hi), inset 0 0 0 1px rgb(10 132 255 / 0.4), 0 8px 24px -4px var(--glass-shadow);
   transition: transform 700ms var(--spring), width 700ms var(--spring);
@@ -515,7 +515,18 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
 @media (prefers-reduced-motion: reduce) { .hk-chip-glide { transition: none; } }
 
 /* Carrousel des pilules du haut (HIG) : plein écran, marges alignées sur les cartes, aimantation sur la marge gauche */
-.hk-carousel { scroll-snap-type: x mandatory; scroll-padding-inline: 16px; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
-.hk-carousel > a.hk-chip { scroll-snap-align: start; }
-@media (min-width: 640px) { .hk-carousel { scroll-padding-inline: 24px; } }
-@media (min-width: 768px) { .hk-carousel { scroll-snap-type: none; scroll-padding-inline: 0; } }
+.hk-carousel { scroll-snap-type: x mandatory; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; -webkit-mask-image: none; mask-image: none; }
+.hk-carousel > a.hk-chip { scroll-snap-align: center; }
+@media (min-width: 768px) { .hk-carousel { scroll-snap-type: none; } }
+/* visuel de pilule : 34 px (≈30 px d origine × 1,12) */
+.hk-chip-ico { display: flex; flex: none; align-items: center; justify-content: center; zoom: 1.12; }
+
+/* Transition latérale entre sous-vues : glissement directionnel + fondu rapide, ressort critique (sans rebond) */
+:root { --spring-soft: linear(0, 0.076, 0.228, 0.392, 0.538, 0.658, 0.752, 0.823, 0.875, 0.913, 0.939, 0.958, 0.971, 0.98, 0.987, 0.991, 0.994, 0.996, 0.997, 0.998, 0.999, 0.999, 0.999, 1, 1); }
+@keyframes sub-slide-next { from { transform: translate3d(36px, 0, 0); } }
+@keyframes sub-slide-prev { from { transform: translate3d(-36px, 0, 0); } }
+@keyframes sub-fade { from { opacity: 0; } }
+.page-slide[data-dir="1"] { animation: sub-slide-next 520ms var(--spring-soft) both, sub-fade 200ms ease-out both; }
+.page-slide[data-dir="-1"] { animation: sub-slide-prev 520ms var(--spring-soft) both, sub-fade 200ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .page-slide[data-dir] { animation: sub-fade 160ms ease-out both; } }
+body { overflow-x: clip; }

@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { DataProvider } from "@/hooks/useQuery";
 import { FiltersProvider } from "@/lib/filters";
 import { ThemeProvider, useTheme } from "@/lib/theme";
-import { routeKey, sectionOf, useRoute, type Route } from "@/lib/route";
+import { routeKey, sectionOf, subviewDir, useRoute, type Route } from "@/lib/route";
 import { useEdgeFades, usePageSwipe } from "@/ui/scrub";
 import { Sidebar, TabBar } from "@/ui/shell";
 import Synthese from "@/views/Synthese";
@@ -57,6 +57,10 @@ function Shell() {
   const { theme } = useTheme();
   const listScroll = useRef(0);
   const prev = useRef<Route["name"]>(route.name);
+  // sens de la transition : calculé une seule fois par changement de page (une re-render ne la relance pas)
+  const nav = useRef({ k: routeKey(route), name: route.name, dir: 0 as -1 | 0 | 1 });
+  if (nav.current.k !== routeKey(route)) nav.current = { k: routeKey(route), name: route.name, dir: subviewDir(nav.current.name, route.name) };
+  const dir = nav.current.dir;
   usePageSwipe();
   useEdgeFades();
 
@@ -71,7 +75,7 @@ function Shell() {
   return (
     <div className="mx-auto flex max-w-[1400px] gap-6 md:p-4">
       <Sidebar route={route} />
-      <main key={`${routeKey(route)}:${theme}`} data-section={sectionOf(route)} className="page-in min-w-0 flex-1 px-4 pb-28 sm:px-6 md:px-0 md:pb-6">
+      <main key={`${routeKey(route)}:${theme}`} data-section={sectionOf(route)} data-dir={dir || undefined} className={`${dir ? "page-slide" : "page-in"} min-w-0 flex-1 px-4 pb-28 sm:px-6 md:px-0 md:pb-6`}>
         <Suspense fallback={<div className="min-h-[60vh]" aria-busy="true" />}>
           <View route={route} />
         </Suspense>

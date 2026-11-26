@@ -69,3 +69,17 @@ export const go = (path: string) => {
 };
 
 export const routeKey = (r: Route) => (r.name === "activity" ? `activity-${r.id}` : r.name);
+
+/** Ordre des pilules du haut, par section : sert au sens de la transition (suivant → glisse vers la gauche) */
+const SUBVIEWS: Record<string, Route["name"][]> = {
+  longevite: ["piliers", "sommeil", "forme"],
+  activite: ["activites", "progres", "entrainement", "records", "plan"],
+};
+/** +1 vers une pilule suivante, -1 en arrière, 0 hors d'une même rangée */
+export function subviewDir(from: Route["name"], to: Route["name"]): -1 | 0 | 1 {
+  for (const list of Object.values(SUBVIEWS)) {
+    const a = list.indexOf(from), b = list.indexOf(to);
+    if (a >= 0 && b >= 0 && a !== b) return b > a ? 1 : -1;
+  }
+  return 0;
+}

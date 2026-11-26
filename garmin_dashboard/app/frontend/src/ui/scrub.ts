@@ -90,8 +90,8 @@ export function useScrubNav(ref: RefObject<HTMLElement | null>, itemSelector: st
   }, [ref, itemSelector]);
 }
 
-const SWIPE_MIN_PX = 110; // grand balayage seulement
-const SWIPE_RATIO = 2.4; // nettement plus horizontal que vertical
+const SWIPE_MIN_PX = 90; // grand balayage seulement
+const SWIPE_RATIO = 2; // nettement plus horizontal que vertical
 const SWIPE_MAX_MS = 800;
 const EDGE_PX = 28; // on laisse les bords à l'Android (geste retour)
 
