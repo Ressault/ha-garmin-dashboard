@@ -52,7 +52,7 @@ export function Gauge({ value, max = 10, color = "#3E8EF7", size = 150, label }:
   const a0 = Math.PI * (1 - Math.max(0, t - 0.14)), a1 = Math.PI * (1 - Math.min(1, t + 0.06));
   const arc = (a: number) => `${(cx + r * Math.cos(a)).toFixed(1)},${(cy - r * Math.sin(a)).toFixed(1)}`;
   return (
-    <svg width={size} height={(size * 92) / 150} viewBox="0 0 150 92" role="img" aria-label={label}>
+    <svg width={size} height={(size * 100) / 150} viewBox="0 0 150 100" role="img" aria-label={label}>
       <path d={`M15 82a60 60 0 0 1 120 0`} fill="none" className="stroke-fill2" strokeWidth="16" strokeLinecap="round" />
       {value != null && <path d={`M${arc(a0)} A60 60 0 0 1 ${arc(a1)}`} fill="none" stroke={color} strokeOpacity=".3" strokeWidth="16" strokeLinecap="round" />}
       {value != null && <circle cx={px} cy={py} r="6.5" fill={color} className="stroke-card" strokeWidth="2.5" />}
@@ -129,17 +129,17 @@ export function Bars({ items, max, color, light, height = 96, unit, label }: { i
     <svg ref={ref} width="100%" height={height} viewBox={`0 0 ${W} ${height}`} role="img" aria-label={label}>
       {items.map((it, i) => {
         const h = it.value ? (it.value / mx) * (base - 18) : 0;
-        const x = i * step + step / 2 - 11;
+        const bw = Math.min(22, step * 0.62), x = i * step + step / 2 - bw / 2;
         return (
           <g key={i}>
-            {it.value ? <rect x={x} y={base - h} width="22" height={h} rx="7" fill={it.strong ? color : light} /> : <rect x={x} y={base - 5} width="22" height="5" rx="2.5" className="fill-fill2" />}
+            {it.value ? <rect x={x} y={base - h} width={bw} height={h} rx={Math.min(7, bw / 2)} fill={it.strong ? color : light} /> : <rect x={x} y={base - 5} width={bw} height="5" rx="2.5" className="fill-fill2" />}
             {it.value != null && it.value > 0 && (
-              <text x={x + 11} y={base - h - 5} fontSize="11" fontWeight="600" textAnchor="middle" className={it.strong ? "fill-foreground" : T}>
+              <text x={x + bw / 2} y={base - h - 5} fontSize="11" fontWeight="600" textAnchor="middle" className={it.strong ? "fill-foreground" : T}>
                 {Math.round(it.value)}
                 {unit}
               </text>
             )}
-            <text x={x + 11} y={height - 6} fontSize="11" textAnchor="middle" className={T}>
+            <text x={x + bw / 2} y={height - 6} fontSize="11" textAnchor="middle" className={T}>
               {it.label}
             </text>
           </g>

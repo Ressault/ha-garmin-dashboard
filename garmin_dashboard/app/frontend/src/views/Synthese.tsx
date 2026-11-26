@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 
 import { MiniTrack } from "@/components/MiniTrack";
 import { useQuery } from "@/hooks/useQuery";
@@ -75,10 +75,12 @@ function ReadinessCard({ series, next }: { series: FitnessDay[]; next: string | 
         </div>
         <Gauge value={r.score} label={`Préparation ${r.score} sur 10`} />
       </div>
-      <div className="mt-4 grid grid-cols-4 gap-1 text-center text-[12px] font-semibold">
+      {/* échelle d'état (non cliquable) : 4 zones, celle du jour en couleur */}
+      <div className="mt-4 grid grid-cols-4 gap-1" role="img" aria-label={`Échelle : ${steps.join(", ")} ; aujourd'hui ${r.status}`}>
         {steps.map((s) => (
-          <span key={s} className="rounded-[10px] py-1.5" style={s === r.status ? { background: "#3E8EF7", color: "#fff" } : { background: "var(--fill2)", color: "var(--label2)" }}>
-            {s}
+          <span key={s} className="flex flex-col items-center gap-1.5">
+            <span className="block h-1.5 w-full rounded-full" style={{ background: s === r.status ? "var(--sys-blue)" : "var(--fill2)" }} />
+            <span className={`text-[12px] ${s === r.status ? "font-semibold text-foreground" : "text-label2"}`}>{s}</span>
           </span>
         ))}
       </div>
@@ -141,9 +143,9 @@ function LastActivity({ a }: { a: ActivityListItem }) {
   const when = a.activity_date === isoDate(new Date()) ? "aujourd'hui" : a.activity_date === yest ? "hier" : dow(a.activity_date);
   const sp = speedDisplay(a.sport_type, a.avg_speed_ms);
   const rows = [
-    a.distance_m ? [GROUP_META[g].color, `${nf(a.distance_m / 1000, 1)} km`] : null,
-    sp.value !== "—" ? ["#34C759", `${sp.value} ${sp.unit}`] : ["#34C759", fmtHM(a.duration_s)],
-    a.avg_hr ? ["#00AFCA", `${nf(a.avg_hr)} BPM`] : null,
+    a.distance_m ? ["Distance", `${nf(a.distance_m / 1000, 1)} km`] : null,
+    sp.value !== "—" ? [sp.unit.includes("/km") ? "Allure" : "Vitesse", `${sp.value} ${sp.unit}`] : ["Durée", fmtHM(a.duration_s)],
+    a.avg_hr ? ["FC moy.", `${nf(a.avg_hr)} BPM`] : null,
   ].filter(Boolean) as [string, string][];
   return (
     <Card tint="red" href={`#/activity/${a.activity_id}`} label={`Dernière activité : ${a.name ?? ""}, ouvrir le détail`}>
@@ -153,12 +155,12 @@ function LastActivity({ a }: { a: ActivityListItem }) {
           <Val>
             {GROUP_META[g].label.split(" ")[0]} · {when} {a.start_time_local.slice(11, 16)}
           </Val>
-          <div className="mt-2.5 flex flex-col gap-1 text-[18px] font-semibold tabular-nums">
-            {rows.map(([c, t]) => (
-              <span key={t} className="flex items-center gap-2">
-                <span aria-hidden className="size-2.5 rounded-full" style={{ background: c }} />
-                {t}
-              </span>
+          <div className="mt-2.5 grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1 tabular-nums">
+            {rows.map(([l, t]) => (
+              <Fragment key={l}>
+                <span className="text-[14px] text-label2">{l}</span>
+                <span className="text-[18px] font-semibold">{t}</span>
+              </Fragment>
             ))}
           </div>
         </div>
@@ -301,15 +303,15 @@ function BodyBattery({ latest, points }: { latest: FitnessDay; points: [number, 
   );
 }
 
-export function SleepWeek({ series, href }: { series: FitnessDay[]; href?: string }) {
-  const last = series.slice(-7);
+export function SleepWeek({ series, href, nights = 7 }: { series: FitnessDay[]; href?: string; nights?: number }) {
+  const last = series.slice(-nights);
   const vals = last.map((d) => d.sleep_score).filter((v): v is number => v != null);
   const avg = vals.length ? vals.reduce((s, x) => s + x, 0) / vals.length : null;
   const t = lastWith(last, "sleep_score") ?? last[last.length - 1];
   return (
     <Card tint="indigo" href={href}>
       <div className="flex items-baseline justify-between">
-        <Lbl more={!!href}>Sommeil · 7 nuits</Lbl>
+        <Lbl more={!!href}>Sommeil · {nights} nuits</Lbl>
         {avg != null && <Sm>moyenne {nf(avg)}</Sm>}
       </div>
       {t?.sleep_score != null && (
@@ -318,7 +320,7 @@ export function SleepWeek({ series, href }: { series: FitnessDay[]; href?: strin
         </Val>
       )}
       <div className="mt-2.5">
-        <Bars items={last.map((d, i) => ({ label: dow(d.date), value: d.sleep_score, strong: i === last.length - 1 }))} max={100} color="#5E6BFF" light="#CDD1FF" label="Scores de sommeil des 7 dernières nuits" />
+        <Bars items={last.map((d, i) => ({ label: nights > 7 && (last.length - 1 - i) % 2 ? "" : dow(d.date), value: d.sleep_score, strong: i === last.length - 1 }))} max={100} color="#5E6BFF" light="#CDD1FF" label={`Scores de sommeil des ${nights} dernières nuits`} />
       </div>
     </Card>
   );

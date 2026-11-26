@@ -44,6 +44,8 @@ export function Frame({ current, tint, children }: { current: Cur; tint: keyof t
 
 /* =========================== Activités =========================== */
 const FILTERS: (Group | "all")[] = ["all", "foot", "road", "mtb", "walk", "gym"];
+const KIND: Record<Group, string> = { foot: "Course", road: "Vélo", mtb: "VTT", walk: "Marche", gym: "Muscu", other: "Activité" };
+const GARMIN_SUFFIX = ["Course à pied sur tapis", "Course à pied", "Trail", "Cyclisme sur route", "Cyclisme virtuel", "Cyclisme", "VTT", "Vélo de montagne", "Marche à pied", "Marche", "Randonnée", "Natation", "Musculation"];
 const SHORT: Record<Group | "all", string> = { all: "Tous", foot: "Course et trail", road: "Vélo", mtb: "VTT", walk: "Marche", gym: "Muscu", other: "Autre" };
 
 function ActRow({ a }: { a: ActivityListItem }) {
@@ -54,22 +56,26 @@ function ActRow({ a }: { a: ActivityListItem }) {
     a.distance_m ? `${nf(a.distance_m / 1000, 1)} km` : fmtHM(a.duration_s),
     a.distance_m && sp.value !== "—" ? `${sp.value} ${sp.unit}` : null,
     a.avg_hr ? `${nf(a.avg_hr)} BPM` : null,
-    a.start_time_local.slice(11, 16),
+    a.distance_m ? null : a.start_time_local.slice(11, 16),
   ].filter(Boolean).join(" · ");
+  // « Perrusson Course à pied » → « Course · Perrusson » : le sport d'abord, le lieu ensuite, sans doublon
+  const raw = (a.name ?? "").trim();
+  const sfx = GARMIN_SUFFIX.find((x) => raw.toLowerCase().endsWith(" " + x.toLowerCase()));
+  const title = !raw ? GROUP_META[g].label : sfx ? `${KIND[g]} · ${raw.slice(0, raw.length - sfx.length).trim()}` : raw;
   return (
     <a href={`#/activity/${a.activity_id}`} className="hk-press flex min-h-[56px] items-center gap-3 px-4 py-2.5">
       {a.mini_track && a.mini_track.length > 1 ? (
         <MiniTrack points={a.mini_track} type={a.sport_type} className="h-11 w-16 shrink-0" />
       ) : (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px]" style={{ background: `${GROUP_META[g].color}22`, color: GROUP_META[g].color }}>
-          <Icon size={19} />
+        <span className="flex h-11 w-16 shrink-0 items-center justify-center rounded-[10px]" style={{ background: `${GROUP_META[g].color}22`, color: GROUP_META[g].color }}>
+          <Icon size={20} />
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[17px]">{a.name ?? GROUP_META[g].label}</span>
+        <span className="block truncate text-[17px]">{title}</span>
         <span className="block truncate text-[14px] text-label2">{meta}</span>
       </span>
-      {a.training_load != null && <span className="text-[15px] font-semibold tabular-nums">{nf(a.training_load)}</span>}
+      {a.training_load != null && <span className="flex shrink-0 flex-col items-end leading-tight"><span className="text-[15px] font-semibold tabular-nums">{nf(a.training_load)}</span><span className="text-[11px] text-label2">charge</span></span>}
     </a>
   );
 }
@@ -193,7 +199,7 @@ export function Progres() {
   const histHalf = (p?.history ?? []).filter((h) => h.time_half_s != null).map((h, i) => [i, h.time_half_s! / 60] as [number, number]);
   return (
     <Frame current="progres" tint="purple">
-      <Hero title={dHalf != null && dHalf < -30 ? `Tu as gagné ${fmtHM(Math.abs(dHalf))} sur semi` : "Tes progrès"}>
+      <Hero title={dHalf != null && dHalf < -30 ? `Tu as gagné ${fmtHM(Math.abs(dHalf))} sur le semi` : "Tes progrès"}>
         {dHalf != null && dHalf < 0 ? "Depuis ta première estimation, ton chrono prévu a fondu. " : ""}
         {avg4 != null ? `Tu cours en moyenne ${nf(avg4)} km par semaine sur les 4 dernières semaines complètes.` : ""}
       </Hero>
@@ -495,8 +501,7 @@ export function Records() {
                               <span className="block truncate text-[14px] text-label2 tabular-nums">{fmtClock(r.time_s)} · {rate(r.time_s)}</span>
                             </span>
                             <span className="flex shrink-0 flex-col items-end gap-1">
-                              {r.all < 3 && <MedalTag i={r.all} text="De tout temps" />}
-                              {r.yr < 3 && <MedalTag i={r.yr} text={r.year} />}
+                              {r.all < 3 ? <MedalTag i={r.all} text="De tout temps" /> : r.yr < 3 ? <MedalTag i={r.yr} text={r.year} /> : null}
                             </span>
                           </a>
                         ))}
@@ -533,7 +538,7 @@ export function Records() {
                     <div key={d.label} className={`flex items-center gap-3 ${i ? "border-t border-sep" : ""}`}>
                       <a href={`#/activity/${b.activity_id}`} aria-label={`Ouvrir l'activité du record ${d.label}`} className="hk-press -m-2 shrink-0 p-2"><MedalDot i={0} size={28} /></a>
                       <button type="button" onClick={() => { setSel(d.label); setTab("analyse"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hk-press flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left">
-                        <span className="flex-1 text-[17px]">{d.label}</span>
+                        <span className="flex-1 text-[17px]">{SHORT_LABEL[d.label] ?? d.label}</span>
                         <span className="text-[17px] font-semibold tabular-nums">{fmtClock(b.time_s)}</span>
                         <span className="w-[76px] text-right text-[13px] text-label2">{shortDay(b.date)}</span>
                       </button>

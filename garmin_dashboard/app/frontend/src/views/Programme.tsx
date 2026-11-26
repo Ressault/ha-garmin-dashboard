@@ -9,8 +9,9 @@ import { Card, H2, Hr, Lbl, Sm, Skel, Val } from "@/ui/kit";
 import { Frame } from "@/views/Activite";
 
 const TYPE_COLOR: Record<string, string> = { endurance: "#34C759", seuil: "#FF375F", relance: "#FF9F0A", longue: "#3E8EF7", test: "#AF52DE", repos: "#8E8E93", course: "#FF453A" };
-const typeColor = (t: string) => TYPE_COLOR[t] ?? "#8E8E93";
-const typeLabel = (t: string) => PLAN_TYPES[t] ?? t.charAt(0).toUpperCase() + t.slice(1);
+const typeColor = (t: string) => TYPE_COLOR[t] ?? TYPE_COLOR[({ run: "endurance", easy: "endurance", long: "longue", tempo: "seuil", threshold: "seuil", interval: "seuil", intervals: "seuil", rest: "repos", race: "course" } as Record<string, string>)[t.toLowerCase()] ?? ""] ?? "#8E8E93";
+const EN_TYPES: Record<string, string> = { run: "Course", easy: "Footing", long: "Sortie longue", tempo: "Seuil", threshold: "Seuil", interval: "Fractionné", intervals: "Fractionné", hill: "Côtes", hills: "Côtes", rest: "Repos", race: "Course", recovery: "Récupération", strength: "Renforcement" };
+const typeLabel = (t: string) => PLAN_TYPES[t] ?? EN_TYPES[t.toLowerCase()] ?? t.charAt(0).toUpperCase() + t.slice(1);
 const STATUS: Record<string, { l: string; c: string } | undefined> = {
   done: { l: "Faite", c: "#34C759" }, partial: { l: "Partielle", c: "#FF9F0A" }, missed: { l: "Manquée", c: "#FF453A" }, today: { l: "Aujourd'hui", c: "#3E8EF7" },
 };
@@ -86,7 +87,6 @@ function Session({ s, today }: { s: PlanSession; today: string }) {
   const c = typeColor(s.type);
   const inner = (
     <div className="flex gap-3 py-3">
-      <span aria-hidden className="mt-1 h-10 w-1 shrink-0 rounded-full" style={{ background: c }} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-[13px] text-label2">
           <span>{dayLabel(s.date)}</span>

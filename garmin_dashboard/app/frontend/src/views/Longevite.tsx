@@ -90,7 +90,7 @@ export function Piliers() {
 
         {dyn && p.dyn && (
           <Card href={runId ? `#/activity/${runId}` : undefined}>
-            <div className="flex items-center justify-between gap-2"><Lbl more>Dynamiques de course · HRM-600</Lbl><Status s={p.dyn} /></div>
+            <div className="flex items-center justify-between gap-2"><Lbl more>Dynamiques de course</Lbl><Status s={p.dyn} /></div>
             {dyn.balance != null && (
               <>
                 <Sm className="mt-3">Équilibre du temps de contact G / D</Sm>
@@ -122,14 +122,16 @@ const hhmm = (ms: number) => new Date(ms).toISOString().slice(11, 16); // horoda
 const minToClock = (m: number) => `${String(Math.floor(((m % 1440) + 1440) % 1440 / 60)).padStart(2, "0")}:${String(((m % 60) + 60) % 60).padStart(2, "0")}`;
 const QUAL: Record<string, [string, string]> = { EXCELLENT: ["Excellent", "var(--ok)"], GOOD: ["Bon", "var(--ok)"], FAIR: ["Correct", "var(--label2)"], POOR: ["Faible", "var(--warn)"] };
 
-function SleepCard({ s, score }: { s: SleepDetails; score: number | null }) {
+function SleepCard({ s, score, official }: { s: SleepDetails; score: number | null; official: number | null }) {
   const phases = [
     { k: "awake", n: "Éveil", v: s.awake_s ?? 0, q: s.qualifiers.awakeCount },
     { k: "rem", n: "Paradoxal", v: s.rem_s ?? 0, q: s.qualifiers.remPercentage },
     { k: "light", n: "Léger", v: s.light_s ?? 0, q: s.qualifiers.lightPercentage },
     { k: "deep", n: "Profond", v: s.deep_s ?? 0, q: s.qualifiers.deepPercentage },
   ] as const;
-  const dur = (s.deep_s ?? 0) + (s.light_s ?? 0) + (s.rem_s ?? 0);
+  const staged = (s.deep_s ?? 0) + (s.light_s ?? 0) + (s.rem_s ?? 0);
+  const dur = official ?? staged; // temps de sommeil officiel Garmin, le même que sur Synthèse et dans Garmin Connect
+  const unstaged = official != null && official - staged > 600 ? official - staged : 0; // part que la montre n'a pas classée par phase
   const total = s.start_local_ms && s.end_local_ms ? (s.end_local_ms - s.start_local_ms) / 60000 : null;
   const start = s.start_local_ms ? hhmm(s.start_local_ms) : "", end = s.end_local_ms ? hhmm(s.end_local_ms) : "";
   const label = score == null ? "—" : score >= 80 ? "Bon score" : score >= 60 ? "Score correct" : "Score faible";
@@ -149,14 +151,20 @@ function SleepCard({ s, score }: { s: SleepDetails; score: number | null }) {
         </Ring>
       </div>
       <Hr />
-      <div className="grid grid-cols-[128px_1fr] items-start gap-3.5 sm:grid-cols-[170px_1fr]">
+      <div className="grid grid-cols-[140px_1fr] items-start gap-3 sm:grid-cols-[170px_1fr]">
         <div>
           {phases.map((p) => (
             <div key={p.k} className="flex items-baseline gap-1.5 border-b border-dotted border-sep py-1.5">
               <span className="flex-1 text-[16px] font-semibold" style={{ color: STAGE_COLOR[p.k] }}>{p.n}</span>
-              <span className="text-[16px] font-semibold tabular-nums">{fmtHM(p.v)}</span>
+              <span className="whitespace-nowrap text-[16px] font-semibold tabular-nums">{fmtHM(p.v)}</span>
             </div>
           ))}
+          {unstaged > 0 && (
+            <div className="flex items-baseline gap-1.5 border-b border-dotted border-sep py-1.5">
+              <span className="flex-1 text-[14px] text-label2">Non classé</span>
+              <span className="whitespace-nowrap text-[14px] tabular-nums text-label2">{fmtHM(unstaged)}</span>
+            </div>
+          )}
         </div>
         <div>
           {s.levels.length > 0 && total ? <Hypnogram levels={s.levels} total={total} start={start} end={end} /> : <Sm>Le détail des phases arrivera avec la prochaine synchro.</Sm>}
@@ -172,7 +180,7 @@ function SleepCard({ s, score }: { s: SleepDetails; score: number | null }) {
   );
 }
 
-function TonightCard({ s }: { s: SleepDetails }) {
+function TonightCard({ s, official }: { s: SleepDetails; official: number | null }) {
   const need = s.next_need_min ?? s.need_min;
   const base = s.next_need_baseline_min ?? s.need_baseline_min;
   if (!need) return null;
@@ -180,7 +188,7 @@ function TonightCard({ s }: { s: SleepDetails }) {
   const bed = b0 != null ? b0 + 10 : 23 * 60 + 30;
   const wake = bed + need;
   const X = (m: number) => ((((m - 22 * 60) % 1440) + 1440) % 1440) / 600 * 322;
-  const lastNight = (s.deep_s ?? 0) + (s.light_s ?? 0) + (s.rem_s ?? 0);
+  const lastNight = official ?? (s.deep_s ?? 0) + (s.light_s ?? 0) + (s.rem_s ?? 0);
   const lastNeed = s.need_min ?? need;
   const delta = base ? need - base : 0;
   return (
@@ -243,8 +251,8 @@ export function Sommeil() {
         <Stagger><Skel h={420} /></Stagger>
       ) : (
         <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2">
-          {s && <SleepCard s={s} score={latest?.sleep_score ?? null} />}
-          {s && <TonightCard s={s} />}
+          {s && <SleepCard s={s} score={latest?.sleep_score ?? null} official={latest?.date === s.date ? dur : null} />}
+          {s && <TonightCard s={s} official={latest?.date === s.date ? dur : null} />}
           <Card tint="teal">
             <div className="flex items-start justify-between">
               <div><Lbl>VFC nocturne</Lbl><Val>{nf(latest?.hrv_last_night_ms)} ms <span className="text-[14px] font-normal text-label2">dernière nuit</span></Val></div>
@@ -261,7 +269,7 @@ export function Sommeil() {
               <div><Sm>FC pendant le sommeil</Sm><Val size={18}>{s?.avg_hr != null ? `${nf(s.avg_hr)} BPM` : "—"}</Val></div>
             </div>
           </Card>
-          <SleepWeek series={series} />
+          <SleepWeek series={series} nights={14} />
         </div>
       )}
     </Page>
