@@ -186,7 +186,7 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
     return () => { cancelAnimationFrame(id); row.removeEventListener("scroll", onScroll); };
   }, []);
   return (
-    <nav ref={ref} aria-label={label} data-fixed className="hk-scroll hk-carousel -mx-4 px-4 pb-0.5 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
+    <nav ref={ref} aria-label={label} data-fixed className="hk-scroll hk-carousel -mx-4 -mb-2.5 px-4 pb-3 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">
       <span ref={glide} aria-hidden className="hk-chip-glide" />
       {children}
     </nav>

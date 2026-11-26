@@ -368,7 +368,12 @@ a.hk-card:focus-visible, a.hk-press:focus-visible, button.hk-press:focus-visible
   background: var(--chip); border: 1px solid var(--sep); color: var(--foreground);
 }
 .hk-chip { position: relative; z-index: 1; background: color-mix(in srgb, var(--card) 55%, transparent); backdrop-filter: blur(12px) saturate(160%); }
-.hk-chip[aria-current="page"] { background: transparent; border-color: transparent; backdrop-filter: none; }
+.hk-chip[aria-current="page"] { background: transparent; border-color: transparent; backdrop-filter: none; color: var(--foreground); }
+/* pilules inactives : verre translucide discret, qui se fond dans le fond de page, contraste légèrement atténué */
+.hk-chip:not([aria-current="page"]) { background: color-mix(in srgb, var(--card) 38%, transparent); border-color: rgb(255 255 255 / 0.35); color: color-mix(in srgb, var(--foreground) 78%, transparent); }
+.hk-chip:not([aria-current="page"]) .text-label2 { opacity: 0.85; }
+.hk-chip[aria-current="page"] .text-label2 { color: color-mix(in srgb, var(--foreground) 72%, transparent); }
+.dark .hk-chip:not([aria-current="page"]) { border-color: rgb(255 255 255 / 0.06); }
 .hk-scroll { position: relative; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
   /* fondu sur les bords où il reste du contenu à faire défiler (--fl / --fr posés par useEdgeFades) */
   -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / calc(1 - var(--fl, 0))) 0, #000 28px, #000 calc(100% - 28px), rgb(0 0 0 / calc(1 - var(--fr, 0))) 100%);
@@ -508,10 +513,11 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
 /* reflet glissant sous l'onglet actif de la rangée du haut */
 .hk-chip-glide {
   position: absolute; z-index: 0; top: 0; left: 0; height: 60px; border-radius: 20px; pointer-events: none;
-  background: var(--glass-bg); backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: inset 0 1px 0 0 var(--glass-hi), inset 0 0 0 1px rgb(10 132 255 / 0.4), 0 8px 24px -4px var(--glass-shadow);
+  background: #fff;
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 1), 0 1px 2px rgb(20 30 70 / 0.08), 0 6px 14px -6px rgb(20 30 70 / 0.22);
   transition: transform 380ms var(--ease-ios), width 380ms var(--ease-ios);
 }
+.dark .hk-chip-glide { background: rgb(255 255 255 / 0.16); box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.4), 0 8px 22px -6px rgb(0 0 0 / 0.6); }
 @media (prefers-reduced-motion: reduce) { .hk-chip-glide { transition: none; } }
 
 /* Carrousel des pilules du haut (HIG) : plein écran, marges alignées sur les cartes, aimantation sur la marge gauche */
