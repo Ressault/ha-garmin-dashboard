@@ -161,7 +161,8 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
     };
     const target = () => {
       const { r, c } = rect();
-      return Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - (r.width - c.width) / 2));
+      const pad = parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0; // même point d'aimantation que le scroll-snap : pilule active sur la marge gauche
+      return Math.max(0, Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + (c.left - r.left) - pad));
     };
     const from = last && last.label === label && performance.now() - last.t < 4000 ? last : null;
     if (from) row.scrollLeft = Math.min(from.scroll, row.scrollWidth - row.clientWidth);
