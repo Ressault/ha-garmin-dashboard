@@ -584,7 +584,13 @@ nav.hk-carousel > a.hk-chip { pointer-events: auto; }
 @keyframes halo-in { from { opacity: 0; } }
 @keyframes halo-out { to { opacity: 0; } }
 /* onglets du bas */
-.hk-layer[data-kind="fade"][data-role="in"] { animation: lf-in 150ms ease-out backwards; }
+/* le fondu porte sur le contenu et sur chaque verre, jamais sur la page entière : une opacité animée sur un ancêtre
+   coupe le verre des pilules de ce qui est derrière (il devient gris) */
+.hk-layer[data-kind="fade"][data-role="in"] { animation: sl-in-done 150ms linear backwards; }
+.hk-layer[data-kind="fade"][data-role="in"] .hk-page > :not(.hk-rail):not(:has(.hk-rail)),
+.hk-layer[data-kind="fade"][data-role="in"] .hk-page::before,
+.hk-layer[data-kind="fade"][data-role="in"] .hk-pg { animation: lf-in 150ms ease-out backwards; }
+.hk-layer[data-role="out"] .hk-rail { visibility: hidden; }
 .hk-layer[data-kind="fade"][data-role="out"] { animation: lf-out 150ms ease-out both; }
 /* pilules du haut : tout ce qui suit le bandeau glisse ; le titre et le bandeau ne bougent pas */
 .hk-layer[data-kind="slide"][data-role="out"] .hk-page > * { visibility: hidden; }
@@ -602,6 +608,7 @@ nav.hk-carousel > a.hk-chip { pointer-events: auto; }
 @media (prefers-reduced-motion: reduce) {
   .hk-layer[data-kind="slide"] .hk-page > * { animation: none !important; visibility: visible !important; }
   .hk-layer[data-kind="slide"][data-role="out"] { animation: lf-out 120ms ease-out both; }
-  .hk-layer[data-kind="slide"][data-role="in"] { animation: lf-in 120ms ease-out backwards; }
+  .hk-layer[data-kind="slide"][data-role="in"] .hk-page > :not(.hk-rail):not(:has(.hk-rail)),
+  .hk-layer[data-kind="slide"][data-role="in"] .hk-pg { animation: lf-in 120ms ease-out backwards !important; }
 }
 body { overflow-x: clip; }
