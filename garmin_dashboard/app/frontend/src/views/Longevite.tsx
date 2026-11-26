@@ -77,7 +77,7 @@ export function Piliers() {
           <div className="mt-2.5 grid grid-cols-3 gap-2">
             <div><Sm>Forme · CTL</Sm><Val size={26} style={{ color: "var(--sys-blue)" }}>{nf(latest.ctl)}</Val></div>
             <div><Sm>Fatigue · ATL</Sm><Val size={26} style={{ color: "var(--sys-pink)" }}>{nf(latest.atl)}</Val></div>
-            <div><Sm>Fraîcheur · TSB</Sm><Val size={26} style={{ color: "#1F7A35" }}>{latest.tsb != null ? sign(Math.round(latest.tsb)) : "—"}</Val></div>
+            <div><Sm>Fraîcheur · TSB</Sm><Val size={26} style={{ color: "var(--ok)" }}>{latest.tsb != null ? sign(Math.round(latest.tsb)) : "—"}</Val></div>
           </div>
           <div className="mt-3">
             <LoadChart ctl={ctl6.map((d) => d.ctl)} atl={ctl6.map((d) => d.atl)} tsb={ctl6.map((d) => d.tsb)} labels={[shortDay(ctl6[0].date), "auj."]} />
@@ -155,7 +155,7 @@ function SleepCard({ s, score, official }: { s: SleepDetails; score: number | nu
         <div>
           {phases.map((p) => (
             <div key={p.k} className="flex items-baseline gap-1.5 border-b border-dotted border-sep py-1.5">
-              <span className="flex-1 text-[16px] font-semibold" style={{ color: STAGE_COLOR[p.k] }}>{p.n}</span>
+              <span className="flex-1 text-[16px] font-semibold" style={{ color: p.k === "deep" ? "var(--stage-deep-text)" : STAGE_COLOR[p.k] }}>{p.n}</span>
               <span className="whitespace-nowrap text-[16px] font-semibold tabular-nums">{fmtHM(p.v)}</span>
             </div>
           ))}

@@ -320,7 +320,7 @@ export function SleepWeek({ series, href, nights = 7 }: { series: FitnessDay[]; 
         </Val>
       )}
       <div className="mt-2.5">
-        <Bars items={last.map((d, i) => ({ label: nights > 7 && (last.length - 1 - i) % 2 ? "" : dow(d.date), value: d.sleep_score, strong: i === last.length - 1 }))} max={100} color="#5E6BFF" light="#CDD1FF" label={`Scores de sommeil des ${nights} dernières nuits`} />
+        <Bars items={last.map((d, i) => ({ label: nights > 7 && (last.length - 1 - i) % 2 ? "" : dow(d.date), value: d.sleep_score, strong: i === last.length - 1 }))} max={100} color="var(--sys-indigo)" light="color-mix(in srgb, var(--sys-indigo) 32%, transparent)" label={`Scores de sommeil des ${nights} dernières nuits`} />
       </div>
     </Card>
   );

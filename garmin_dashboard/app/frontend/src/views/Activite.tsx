@@ -228,7 +228,7 @@ export function Progres() {
             <Card>
               <div className="flex items-baseline justify-between"><Lbl>Course et trail · par semaine</Lbl><Sm>km</Sm></div>
               <div className="mt-3">
-                <Bars height={150} items={ws.slice(-8).map((x, i, arr) => ({ label: i === 0 || parseDay(x.week).getDate() <= 7 ? shortDay(x.week) : String(parseDay(x.week).getDate()), value: x.km, strong: i < arr.length - 1 }))} color="var(--sys-pink)" light="#FFB3C1" label="Kilomètres de course et trail par semaine" />
+                <Bars height={150} items={ws.slice(-8).map((x, i, arr) => ({ label: i === 0 || parseDay(x.week).getDate() <= 7 ? shortDay(x.week) : String(parseDay(x.week).getDate()), value: x.km, strong: i < arr.length - 1 }))} color="var(--sys-pink)" light="color-mix(in srgb, var(--sys-pink) 38%, transparent)" label="Kilomètres de course et trail par semaine" />
               </div>
               {avg4 != null && <P className="mt-1.5">Moyenne de {nf(avg4)} km sur les 4 dernières semaines complètes. La semaine en cours est en clair.</P>}
             </Card>
@@ -340,7 +340,7 @@ export function Entrainement() {
           <Card>
             <div className="flex items-baseline justify-between"><Lbl>Charge par semaine</Lbl><Sm>en cours en clair</Sm></div>
             <div className="mt-2.5">
-              <Bars height={120} items={e.weeks.slice(-8).map((x, i, arr) => ({ label: i === 0 || parseDay(x.week).getDate() <= 7 ? shortDay(x.week) : String(parseDay(x.week).getDate()), value: x.load, strong: i < arr.length - 1 }))} color="var(--sys-blue)" light="#9EC5FF" label="Charge d'entraînement par semaine" />
+              <Bars height={120} items={e.weeks.slice(-8).map((x, i, arr) => ({ label: i === 0 || parseDay(x.week).getDate() <= 7 ? shortDay(x.week) : String(parseDay(x.week).getDate()), value: x.load, strong: i < arr.length - 1 }))} color="var(--sys-blue)" light="color-mix(in srgb, var(--sys-blue) 38%, transparent)" label="Charge d'entraînement par semaine" />
             </div>
           </Card>
         )}
