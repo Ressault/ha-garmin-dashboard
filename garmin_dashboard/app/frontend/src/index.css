@@ -598,7 +598,7 @@ nav.hk-carousel > a.hk-chip { pointer-events: auto; }
 .hk-layer[data-kind="slide"][data-role="in"] .hk-page::before { animation: halo-in 380ms ease-out backwards; }
 .hk-layer[data-kind="slide"][data-role="out"] .hk-page::before { animation: halo-out 380ms ease-out both; }
 .hk-layer[data-kind="slide"][data-role="in"] { animation: sl-in-done 380ms linear backwards; }
-@keyframes sl-in-done { from { opacity: 1; } }
+@keyframes sl-in-done { from { outline-color: transparent; } } /* marqueur de fin sans opacité : une opacité animée sur la page assombrit le verre des pilules */
 @media (prefers-reduced-motion: reduce) {
   .hk-layer[data-kind="slide"] .hk-page > * { animation: none !important; visibility: visible !important; }
   .hk-layer[data-kind="slide"][data-role="out"] { animation: lf-out 120ms ease-out both; }
