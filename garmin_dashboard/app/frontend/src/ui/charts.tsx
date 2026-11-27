@@ -432,26 +432,26 @@ export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fm
   const gid = `rc${useId().replace(/:/g, "")}`;
   const H = 204, T0 = 40, B = 26, G = 58; // G : gouttière droite pour les graduations
   if (points.length === 0) return null;
-  // sorties dans l'ordre ; on écarte les efforts aberrants (très lents) qui écraseraient l'échelle, sauf les médaillés
-  const all = [...points].sort((a, b) => a.t - b.t);
-  const med = [...all.map((p) => p.v)].sort((a, b) => a - b)[Math.floor(all.length / 2)];
-  const kept = all.filter((p) => p.medal != null || p.v >= med * 0.82);
-  const pts = kept.length >= 2 ? kept : all;
+  // une sortie = une ligne verticale = une ligne de la liste ; les efforts aberrants (très lents) restent affichés
+  // mais ne comptent pas dans l'échelle, pour ne pas écraser la courbe
+  const pts = [...points].sort((a, b) => a.t - b.t);
+  const med = [...pts.map((p) => p.v)].sort((a, b) => a - b)[Math.floor(pts.length / 2)];
+  const inScale = (p: RecordPoint) => p.medal != null || p.v >= med * 0.82;
   const n = pts.length;
   // courbe de forme : meilleur effort sur les 4 dernières sorties (elle peut redescendre, comme sur Strava)
   const WIN = 4;
   const raw = pts.map((_, i) => Math.max(...pts.slice(Math.max(0, i - WIN + 1), i + 1).map((p) => p.v)));
-  // adoucit les plateaux : deux passes de moyenne [1 2 1] (bords prolongés) → vraie courbe, plus de marches
+  // adoucit les plateaux : trois passes de moyenne [1 2 1] (bords prolongés) → vraie courbe, plus de marches
   const soften = (a: number[]) => a.map((_, i) => (a[Math.max(0, i - 1)] + 2 * a[i] + a[Math.min(a.length - 1, i + 1)]) / 4);
   const form = soften(soften(soften(raw)));
-  const vs = [...pts.map((p) => p.v), ...form];
+  const vs = [...pts.filter(inScale).map((p) => p.v), ...form];
   let lo = Math.min(...vs), hi = Math.max(...vs);
   if (hi - lo < 1e-6) { lo -= 1; hi += 1; }
   const padV = (hi - lo) * 0.12;
   lo -= padV; hi += padV;
   const PW = W - G;
   const X = (i: number) => (n === 1 ? PW / 2 : 14 + (i / (n - 1)) * (PW - 28)); // sorties espacées régulièrement
-  const Y = (v: number) => T0 + (1 - (v - lo) / (hi - lo)) * (H - T0 - B);
+  const Y = (v: number) => Math.min(H - B - 4, T0 + (1 - (v - lo) / (hi - lo)) * (H - T0 - B));
   const line: [number, number][] = form.map((v, i) => [X(i), Y(v)]);
   const d = n > 1 ? smoothPath(line) : "";
   const baseY = H - B;
@@ -482,7 +482,7 @@ export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fm
         </g>
       ))}
       {area && <path d={area} fill={`url(#${gid})`} />}
-      {pts.map((p, i) => (p.medal == null && p.v < form[i] - 1e-9) ? <circle key={i} cx={X(i)} cy={Y(p.v)} r="3.5" className="fill-label2" fillOpacity=".55" /> : null)}
+      {pts.map((p, i) => p.medal == null ? <circle key={i} cx={X(i)} cy={Y(p.v)} r="3.5" className="fill-label2" fillOpacity={inScale(p) ? 0.55 : 0.3} /> : null)}
       {d && <path d={d} fill="none" stroke="var(--sys-blue)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
       <circle cx={line[0][0]} cy={line[0][1]} r="5" className="fill-card" stroke="var(--sys-orange)" strokeWidth="2" />
       {lane.map(({ p, x, y, bx }, i) => {
