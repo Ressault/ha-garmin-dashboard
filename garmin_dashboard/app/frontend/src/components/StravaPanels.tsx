@@ -9,7 +9,7 @@ import { axisPointerLine, axisText, tipRow, tipTitle, tooltipBase, type Opt } fr
 import { fmtPaceSec, nf } from "@/lib/format";
 import { altInsight, avgOf, cadInsight, context, hrInsight, kmRows, maxOf, minOf, normalizedPower, paceInsight, pwrInsight, secToIndex, segmentsInsight, type KmRow } from "@/lib/insights";
 import { C } from "@/lib/palette";
-import { range90, smooth, type Prepared } from "@/lib/series";
+import { clipToAxis, niceAxis, paceRange, range90, smooth, type Prepared } from "@/lib/series";
 
 const MAX_POINTS = 500;
 const GHOST = "rgba(142,142,147,0.22)";
@@ -80,14 +80,21 @@ function MetricChart({
     const km = prep.xKind === "km";
     const x = idx.map((i) => +prep.x[i].toFixed(3));
     const alt = smooth(prep.alt, 2);
-    const y = idx.map((i) => values[i]);
+    let r0 = inverse ? paceRange(values) : range90(values);
+    if (r0 && refLine) r0 = [Math.min(r0[0], refLine.value), Math.max(r0[1], refLine.value)];
+    const ax = r0 ? niceAxis(r0, { pad: 0.15, pace: !!inverse }) : null;
+    // pendant un arrêt détecté par la montre, l'allure n'a pas de sens : la courbe s'interrompt (la bande grise le montre)
+    const stopped = new Uint8Array(prep.n);
+    if (inverse) for (const sg of segments ?? []) {
+      if (sg.type === "run" || sg.type === "walk" || sg.dur_s == null) continue;
+      const i0 = secToIndex(prep.time, sg.start_s), i1 = secToIndex(prep.time, sg.start_s + sg.dur_s);
+      for (let i = Math.max(0, i0 - 2); i <= Math.min(prep.n - 1, i1 + 2); i++) stopped[i] = 1;
+    }
+    const y = idx.map((i) => (stopped[i] ? null : ax ? clipToAxis([values[i]], ax)[0] : values[i]));
     const a = idx.map((i) => alt[i]);
     const hasAlt = ghost && a.some((v) => v != null);
 
-    let r = range90(values);
-    if (r && refLine) r = [Math.min(r[0], refLine.value), Math.max(r[1], refLine.value)];
-    const pad = r ? (r[1] - r[0]) * 0.3 : 0;
-    const yr = r ? { min: Math.max(0, r[0] - pad), max: r[1] + pad } : {};
+    const yr = ax ? { min: ax.min, max: ax.max, interval: ax.interval } : {};
 
     // Bandes marche / arrêt (largeur minimale pour rester visibles sur une longue sortie)
     const xmax = x[x.length - 1] ?? 1;
@@ -132,10 +139,17 @@ function MetricChart({
       showSymbol: false,
       animation: false,
       sampling: "lttb",
+      smooth: 0.3,
+      smoothMonotone: "x",
+      connectNulls: false,
       z: 3,
       data: x.map((xv, k) => [xv, y[k]]),
-      lineStyle: { width: 1.5, color },
-      areaStyle: { color, opacity: 0.55, origin: inverse ? "end" : "start" },
+      lineStyle: { width: 2, color },
+      areaStyle: {
+        origin: inverse ? "end" : "start",
+        color: { type: "linear", x: 0, y: inverse ? 1 : 0, x2: 0, y2: inverse ? 0 : 1, colorStops: [{ offset: 0, color }, { offset: 1, color: "transparent" }] },
+        opacity: 0.32,
+      },
       ...(avgLine || refLine
         ? {
             markLine: {
@@ -174,7 +188,6 @@ function MetricChart({
           inverse: !!inverse,
           scale: true,
           ...yr,
-          splitNumber: 3,
           axisLine: { show: false },
           axisTick: { show: false },
           axisLabel: { ...axisText, formatter: (v: number) => fmt(v) },
@@ -235,7 +248,7 @@ function KmTable({ rows, foot }: { rows: KmRow[]; foot: boolean }) {
             <span>{partial ? nf(r.dist_m / 1000, 1) : r.km}</span>
             <span>{foot ? fmtPaceSec(r.pace) : nf(r.spd * 3.6, 1)}</span>
             <span className="h-[22px]">
-              <span className={`block h-full rounded-md ${r.spd === best ? "bg-[#0A84FF]" : "bg-[#0A84FF]/75"}`} style={{ width: `${width(r.spd) * 100}%` }} />
+              <span className={`block h-full rounded-md ${r.spd === best ? "bg-[var(--sys-blue)]" : "bg-[var(--sys-blue)]/70"}`} style={{ width: `${width(r.spd) * 100}%` }} />
             </span>
             <span className="text-muted-foreground text-right">{r.elev != null ? (Math.abs(r.elev) < 0.5 ? "0" : nf(r.elev)) : "—"}</span>
             <span className="text-right">{r.hr ? nf(r.hr) : "—"}</span>
@@ -248,32 +261,38 @@ function KmTable({ rows, foot }: { rows: KmRow[]; foot: boolean }) {
 
 /* ---------- Effort relatif ---------- */
 function RelativeEffort({ value, ratio, text }: { value: number; ratio: number | null; text: string }) {
-  // curseur : 0 = très léger … 1 = très intense ; 1× la moyenne = au centre
-  const pos = ratio == null ? null : Math.max(0.04, Math.min(0.96, 0.5 + (ratio - 1) * 0.5));
-  const bands = [
-    { label: "Plus intense que la moyenne", bg: "#E5322D" },
-    { label: "Ta moyenne sur 3 semaines", bg: "#7A0FB8" },
-    { label: "Moins intense que la moyenne", bg: "#A93CE8" },
+  // 0 = bien plus léger … 1 = bien plus intense ; 1× ta moyenne de 3 semaines = au centre
+  const pos = ratio == null ? null : Math.max(0.03, Math.min(0.97, 0.5 + (ratio - 1) * 0.5));
+  const zone = pos == null ? -1 : pos < 2 / 5.5 ? 0 : pos <= 3.5 / 5.5 ? 1 : 2;
+  const zones = [
+    { label: "Plus léger", c: "color-mix(in srgb, var(--sys-purple) 35%, transparent)" },
+    { label: "Ta moyenne", c: "color-mix(in srgb, var(--sys-purple) 70%, transparent)" },
+    { label: "Plus intense", c: "var(--sys-pink)" },
   ];
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-baseline justify-between gap-4">
           <CardTitle className="text-base">Effort relatif</CardTitle>
-          <span className="text-2xl font-semibold tabular-nums">{nf(value)}</span>
+          <span className="text-[28px] leading-none font-bold tabular-nums">{nf(value)}</span>
         </div>
         {text && <p className="text-muted-foreground text-[15px]">{text}</p>}
       </CardHeader>
       <CardContent>
         {pos != null ? (
-          <div className="relative overflow-hidden rounded-xl">
-            {bands.map((b) => (
-              <div key={b.label} className="px-4 py-4 text-sm font-semibold text-white" style={{ background: b.bg }}>
-                {b.label}
+          <div role="img" aria-label={`Effort ${zones[zone].label.toLowerCase()} que tes 3 dernières semaines`}>
+            <div className="relative h-2">
+              <div className="grid h-full grid-cols-[2fr_1.5fr_2fr] gap-1">
+                {zones.map((z) => <span key={z.label} className="rounded-full" style={{ background: z.c }} />)}
               </div>
-            ))}
-            <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-black/80" style={{ left: `${pos * 100}%` }} />
-            <div className="pointer-events-none absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/70 bg-black" style={{ left: `${pos * 100}%` }} />
+              <span className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card shadow-[0_1px_4px_rgb(0_0_0/0.25),0_0_0_2px_var(--foreground)]" style={{ left: `${pos * 100}%` }} />
+            </div>
+            <div className="mt-2 grid grid-cols-[2fr_1.5fr_2fr] gap-1 whitespace-nowrap text-[12px]">
+              {zones.map((z, i) => (
+                <span key={z.label} className={`${i === 0 ? "text-left" : i === 1 ? "text-center" : "text-right"} ${i === zone ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{z.label}</span>
+              ))}
+            </div>
+            <p className="text-muted-foreground mt-1 text-[12px]">Comparé à tes 3 dernières semaines.</p>
           </div>
         ) : (
           <p className="text-muted-foreground text-sm">Pas assez de sorties récentes pour comparer.</p>
@@ -366,10 +385,10 @@ export function StravaPanels({ a, prep }: { a: ActivityDetail; prep: Prepared | 
 
       {hasHr && (
         <Section title="Fréquence cardiaque">
-          <MetricChart prep={prep} title="Fréquence cardiaque" name="FC" color="#F26B6B" values={hrVals} unit="bpm" group={g} fmt={(v) => nf(v)} avgLine={a.avg_hr} segments={segs} refLine={t?.lthr_bpm ? { value: t.lthr_bpm, label: `Seuil ${nf(t.lthr_bpm)}` } : null} />
+          <MetricChart prep={prep} title="Fréquence cardiaque" name="FC" color="var(--sys-red)" values={hrVals} unit="BPM" group={g} fmt={(v) => nf(v)} avgLine={a.avg_hr} segments={segs} refLine={t?.lthr_bpm ? { value: t.lthr_bpm, label: `Seuil ${nf(t.lthr_bpm)}` } : null} />
           <div className="mt-2">
-            <StatRow label="Fréquence cardiaque moyenne" value={nf(a.avg_hr ?? avgOf(prep.hr))} unit="bpm" />
-            <StatRow label="Fréquence cardiaque maximum" value={nf(a.max_hr ?? maxOf(prep.hr))} unit="bpm" />
+            <StatRow label="Fréquence cardiaque moyenne" value={nf(a.avg_hr ?? avgOf(prep.hr))} unit="BPM" />
+            <StatRow label="Fréquence cardiaque maximum" value={nf(a.max_hr ?? maxOf(prep.hr))} unit="BPM" />
           </div>
           <Insight text={hrInsight(a, prep, t)} />
         </Section>

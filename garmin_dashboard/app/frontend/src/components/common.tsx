@@ -77,8 +77,8 @@ export function Segmented<T extends string | number>({
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative z-10 flex items-center justify-center rounded-full px-3 font-medium whitespace-nowrap outline-none transition-colors duration-200 focus-visible:ring-[3px] focus-visible:ring-ring/50",
-              size === "sm" ? "h-7 text-xs" : "h-8 text-[13px]",
+              "relative z-10 flex items-center justify-center rounded-full px-3 font-medium whitespace-nowrap outline-none after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] transition-colors duration-200 focus-visible:ring-[3px] focus-visible:ring-ring/50",
+              size === "sm" ? "h-8 text-[13px]" : "h-9 text-[14px]",
               active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -145,7 +145,7 @@ export function InfoTip({ children, label = "Plus d'informations" }: { children:
         <button
           type="button"
           aria-label={label}
-          className="text-muted-foreground hover:text-foreground inline-flex size-5 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="text-muted-foreground hover:text-foreground relative inline-flex size-5 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 after:absolute after:-inset-3 after:content-['']"
         >
           <Info className="size-3.5" />
         </button>

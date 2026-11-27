@@ -55,7 +55,7 @@ function Editor({
             Coller
           </Button>
         )}
-        <Button type="button" size="sm" onClick={onSave} disabled={!dirty || saving} className="ml-auto">
+        <Button type="button" onClick={onSave} disabled={!dirty || saving} className="ml-auto h-11 px-5">
           {saving ? <Loader2 className="animate-spin" /> : <Save />}
           Enregistrer
         </Button>
@@ -120,14 +120,14 @@ export function AnalysisPanel({ a }: { a: ActivityDetail }) {
 
   return (
     <div className="grid gap-4">
-      <div className="bg-foreground/[0.04] flex flex-wrap items-center gap-3 rounded-2xl p-4">
-        <div className="min-w-0 flex-1">
+      <div className="bg-foreground/[0.04] grid gap-3 rounded-2xl p-4 sm:flex sm:items-center">
+        <div className="min-w-0 sm:flex-1">
           <p className="text-[15px] font-semibold tracking-tight">Faire analyser cette séance</p>
           <p className="text-muted-foreground mt-0.5 text-[13px] text-pretty">
             Copie un résumé compact (allures, FC, zones, dynamiques) puis colle-le dans Claude. Reviens coller sa réponse ci-dessous.
           </p>
         </div>
-        <Button onClick={copy} disabled={copying} aria-live="polite">
+        <Button onClick={copy} disabled={copying} aria-live="polite" className="h-11 w-full sm:w-auto">
           {copying ? <Loader2 className="animate-spin" /> : copied ? <ClipboardCheck /> : <ClipboardCopy />}
           {copied ? "Copié" : "Copier le bilan pour Claude"}
         </Button>
@@ -135,8 +135,8 @@ export function AnalysisPanel({ a }: { a: ActivityDetail }) {
 
       <Tabs defaultValue="notes">
         <TabsList aria-label="Type de note">
-          <TabsTrigger value="notes">Ressenti {saved.notes && <span className="size-1.5 rounded-full bg-[#30D158]" />}</TabsTrigger>
-          <TabsTrigger value="ai">Analyse Claude {saved.ai && <span className="size-1.5 rounded-full bg-[#30D158]" />}</TabsTrigger>
+          <TabsTrigger value="notes">Ressenti {saved.notes && <span className="size-1.5 rounded-full bg-[var(--sys-green)]" />}</TabsTrigger>
+          <TabsTrigger value="ai">Analyse Claude {saved.ai && <span className="size-1.5 rounded-full bg-[var(--sys-green)]" />}</TabsTrigger>
         </TabsList>
         <TabsContent value="notes" className="mt-3">
           <Editor

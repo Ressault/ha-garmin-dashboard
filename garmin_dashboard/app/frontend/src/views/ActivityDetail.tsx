@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ArrowLeft, Flame, Gauge, HeartPulse, Mountain, Timer } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 import { ActivityChart, type ActivityChartHandle } from "@/components/ActivityChart";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
@@ -8,7 +8,6 @@ import { StravaPanels } from "@/components/StravaPanels";
 import { RunningDynamics } from "@/components/RunningDynamics";
 import { TrackMap, type MapMode, type TrackMapHandle } from "@/components/TrackMap";
 import { ZoneBars } from "@/components/ZoneBars";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@/hooks/useQuery";
@@ -16,13 +15,19 @@ import { api, type ActivityDetail, type Split } from "@/lib/api";
 import { dayLabelLong, fmtHM, isFoot, nf, speedDisplay, sportGroup, SPORT_LABEL, teInfo, timeOf, fmtPace } from "@/lib/format";
 import { prepare } from "@/lib/series";
 
-function Stat({ label, value, unit, icon }: { label: string; value: string; unit?: string; icon?: React.ReactNode }) {
+/** Libellés Garmin d'effet d'entraînement (codes bruts de l'API) traduits */
+const TE_FR: Record<string, string> = {
+  RECOVERY: "Récupération", AEROBIC_BASE: "Endurance fondamentale", BASE: "Endurance fondamentale", TEMPO: "Tempo", LACTATE_THRESHOLD: "Seuil",
+  THRESHOLD: "Seuil", VO2MAX: "VO₂ max", ANAEROBIC_CAPACITY: "Anaérobie", SPRINT: "Sprint", NO_BENEFIT: "Aucun effet", NONE: "Aucun effet",
+};
+const teLabel = (raw: string | null | undefined) => (raw ? TE_FR[raw.toUpperCase()] ?? raw.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase()) : null);
+/** « Perrusson Course à pied » → lieu seul (le sport est déjà dit dessous) */
+const SUFFIX = ["Course à pied sur tapis", "Course à pied", "Trail", "Cyclisme sur route", "Cyclisme virtuel", "Cyclisme", "VTT", "Vélo de montagne", "Marche à pied", "Marche", "Randonnée", "Natation", "Musculation"];
+
+function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-muted-foreground flex items-center gap-1 text-xs [&_svg]:size-3.5">
-        {icon}
-        {label}
-      </p>
+      <p className="text-muted-foreground text-[13px]">{label}</p>
       <Value value={value} unit={unit} size="lg" className="mt-0.5" />
     </div>
   );
@@ -34,12 +39,15 @@ function Header({ a }: { a: ActivityDetail }) {
   const speed = speedDisplay(a.sport_type, a.avg_speed_ms);
   const te = teInfo(a.aerobic_te);
   const gap = a.avg_gap_speed_ms && foot ? fmtPace(a.avg_gap_speed_ms) : null;
+  const raw = (a.name ?? "").trim();
+  const sfx = SUFFIX.find((x) => raw.toLowerCase().endsWith(" " + x.toLowerCase()));
+  const title = !raw ? SPORT_LABEL[g] : sfx ? raw.slice(0, raw.length - sfx.length).trim() : raw;
   return (
     <div className="grid grid-cols-1 gap-5">
       <div className="flex items-start gap-3.5">
         <SportTile type={a.sport_type} className="size-12" />
         <div className="min-w-0">
-          <h1 className="text-[28px] leading-8 font-bold tracking-tight text-balance">{a.name || SPORT_LABEL[g]}</h1>
+          <h1 className="text-[28px] leading-8 font-bold tracking-tight text-balance">{title}</h1>
           <p className="text-muted-foreground mt-0.5 text-[15px]">
             {dayLabelLong(a.activity_date)} · {timeOf(a.start_time_local)} · {SPORT_LABEL[g]}
           </p>
@@ -48,25 +56,21 @@ function Header({ a }: { a: ActivityDetail }) {
       <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Distance" value={(a.distance_m ?? 0) > 100 ? nf((a.distance_m ?? 0) / 1000, 2) : "—"} unit="km" />
         <Stat label="Durée" value={fmtHM(a.duration_s)} />
-        <Stat label={foot ? "Allure moy." : "Vitesse moy."} value={speed.value} unit={speed.unit} icon={<Gauge />} />
-        <Stat label="D+" value={nf(a.elevation_gain_m)} unit="m" icon={<Mountain />} />
-        <Stat label="FC moy." value={a.avg_hr ? nf(a.avg_hr) : "—"} unit="bpm" icon={<HeartPulse />} />
-        <Stat label="Effet aérobie" value={a.aerobic_te != null ? nf(a.aerobic_te, 1) : "—"} icon={<Flame />} />
+        <Stat label={foot ? "Allure moy." : "Vitesse moy."} value={speed.value} unit={speed.unit} />
+        <Stat label="Dénivelé +" value={nf(a.elevation_gain_m)} unit="m" />
+        <Stat label="FC moy." value={a.avg_hr ? nf(a.avg_hr) : "—"} unit="BPM" />
+        <Stat label="Effet aérobie" value={a.aerobic_te != null ? nf(a.aerobic_te, 1) : "—"} />
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 text-[13px] font-medium">
         {te && (
-          <Badge variant="secondary" style={{ color: te.color }}>
-            {a.te_label || te.label}
-          </Badge>
+          <span className="rounded-full px-3 py-1.5" style={{ color: te.color, background: `color-mix(in srgb, ${te.color} 14%, transparent)` }}>
+            {teLabel(a.te_label) || te.label}
+          </span>
         )}
-        {gap && (
-          <Badge variant="secondary">
-            <Timer /> Allure ajustée {gap} /km
-          </Badge>
-        )}
-        {a.max_hr ? <Badge variant="secondary">FC max {nf(a.max_hr)} bpm</Badge> : null}
-        {a.training_load ? <Badge variant="secondary">Charge {nf(a.training_load)}</Badge> : null}
-        {a.vo2max ? <Badge variant="secondary">VO₂max {nf(a.vo2max)}</Badge> : null}
+        {gap && <span className="rounded-full bg-foreground/[0.06] px-3 py-1.5">Allure ajustée {gap} /km</span>}
+        {a.max_hr ? <span className="rounded-full bg-foreground/[0.06] px-3 py-1.5">FC max {nf(a.max_hr)} BPM</span> : null}
+        {a.training_load ? <span className="rounded-full bg-foreground/[0.06] px-3 py-1.5">Charge {nf(a.training_load)}</span> : null}
+        {a.vo2max ? <span className="rounded-full bg-foreground/[0.06] px-3 py-1.5">VO₂ max {nf(a.vo2max)}</span> : null}
       </div>
     </div>
   );
@@ -81,8 +85,8 @@ function SplitsTable({ a }: { a: ActivityDetail }) {
   const hasMoving = splits.some((s) => s.moving_s);
   const fastest = foot ? Math.max(...splits.filter((s) => (s.distance_m ?? 0) > 200).map((s) => movingSpeed(s) ?? 0)) : 0;
   return (
-    <div className="-mx-1 overflow-x-auto">
-      <table className="w-full min-w-[480px] text-sm">
+    <div className="-mx-1">
+      <table className="w-full text-[15px] tabular-nums">
         <thead>
           <tr className="text-muted-foreground border-b text-xs">
             <th className="px-2 py-2 text-left font-medium">Tour</th>
@@ -90,10 +94,10 @@ function SplitsTable({ a }: { a: ActivityDetail }) {
             <th className="px-2 py-2 text-right font-medium">FC</th>
             <th className="px-2 py-2 text-right font-medium">D+</th>
             <th className="px-2 py-2 text-right font-medium">Cadence</th>
-            <th className="px-2 py-2 text-right font-medium">Contact</th>
+            <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">Contact</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/[0.06]">
+        <tbody className="divide-y divide-foreground/[0.06]">
           {splits.map((s) => {
             const spd = movingSpeed(s);
             const sp = speedDisplay(a.sport_type, spd);
@@ -101,14 +105,14 @@ function SplitsTable({ a }: { a: ActivityDetail }) {
             const cad = s.cadence_spm ? (s.cadence_spm < 110 && foot ? s.cadence_spm * 2 : s.cadence_spm) : null;
             return (
               <tr key={s.n} className="hover:bg-foreground/[0.03]">
-                <td className="px-2 py-2 font-medium">{s.n}</td>
-                <td className={`px-2 py-2 text-right font-semibold ${best ? "text-[#30D158]" : ""}`}>
+                <td className="px-2 py-2.5 font-medium">{s.n}{(s.distance_m ?? 1000) < 500 && <span className="text-muted-foreground ml-1 text-[12px] font-normal">{nf(s.distance_m ?? 0)} m</span>}</td>
+                <td className={`px-2 py-2.5 text-right font-semibold ${best ? "text-[color:var(--ok)]" : ""}`}>
                   {sp.value} <span className="text-muted-foreground text-xs font-normal">{sp.unit}</span>
                 </td>
-                <td className="px-2 py-2 text-right">{s.avg_hr ? nf(s.avg_hr) : "—"}</td>
-                <td className="px-2 py-2 text-right">{s.elev_gain_m != null ? nf(s.elev_gain_m) : "—"}</td>
-                <td className="px-2 py-2 text-right">{cad ? nf(cad) : "—"}</td>
-                <td className="px-2 py-2 text-right">{s.gct_ms ? `${nf(s.gct_ms)} ms` : "—"}</td>
+                <td className="px-2 py-2.5 text-right">{s.avg_hr ? nf(s.avg_hr) : "—"}</td>
+                <td className="px-2 py-2.5 text-right">{s.elev_gain_m != null ? nf(s.elev_gain_m) : "—"}</td>
+                <td className="px-2 py-2.5 text-right">{cad ? nf(cad) : "—"}</td>
+                <td className="hidden px-2 py-2.5 text-right sm:table-cell">{s.gct_ms ? `${nf(s.gct_ms)} ms` : "—"}</td>
               </tr>
             );
           })}
@@ -139,9 +143,9 @@ export default function ActivityDetailView({ id }: { id: number }) {
             window.history.back();
           }
         }}
-        className="text-primary -ml-1 inline-flex w-fit items-center gap-1 rounded-lg px-1 py-1 text-[15px] font-medium outline-none transition-opacity duration-150 hover:opacity-80 focus-visible:ring-[3px] focus-visible:ring-ring/50 active:opacity-60"
+        className="hk-press -ml-2 inline-flex h-11 w-fit items-center gap-0.5 rounded-lg pr-2 text-[17px] text-[color:var(--sys-blue)] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
-        <ArrowLeft className="size-4" /> Retour
+        <ChevronLeft className="size-7" strokeWidth={2.4} /> Retour
       </a>
 
       {q.error && !a && <QueryError error={q.error} onRetry={q.reload} />}

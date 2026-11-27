@@ -97,7 +97,7 @@ export const TrackMap = forwardRef<TrackMapHandle, Props>(function TrackMap({ tr
     const el = elRef.current;
     if (!el) return;
     const map = L.map(el, { preferCanvas: true, zoomSnap: 0.25, zoomControl: false, scrollWheelZoom: false, attributionControl: true });
-    L.control.zoom({ position: "bottomright" }).addTo(map);
+    if (matchMedia("(hover: hover) and (pointer: fine)").matches) L.control.zoom({ position: "bottomright" }).addTo(map);
     // OpenStreetMap (sans clé) assombri par un filtre CSS (voir .dark-tiles dans index.css)
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,

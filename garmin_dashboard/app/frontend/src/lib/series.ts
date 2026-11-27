@@ -121,3 +121,32 @@ export function range90(values: (number | null)[]): [number, number] | null {
   const hi = v[Math.floor(v.length * 0.95)];
   return hi > lo ? [lo, hi] : null;
 }
+
+/** Axe « rond » : bornes et pas lisibles (1-2-5 × 10ⁿ, ou 15 s / 30 s / 1 min pour une allure en s/km) */
+export function niceAxis(r: [number, number], opts: { pad?: number; pace?: boolean; floor0?: boolean } = {}): { min: number; max: number; interval: number } {
+  const pad = (r[1] - r[0]) * (opts.pad ?? 0.25);
+  let lo = r[0] - pad, hi = r[1] + pad;
+  if (opts.floor0 !== false) lo = Math.max(0, lo);
+  const raw = Math.max((hi - lo) / 3, 1e-6);
+  let step: number;
+  if (opts.pace) step = [10, 15, 20, 30, 60, 90, 120, 180, 300].find((s) => s >= raw) ?? 600;
+  else {
+    const p = 10 ** Math.floor(Math.log10(raw)), m = raw / p;
+    step = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  }
+  return { min: Math.floor(lo / step) * step, max: Math.ceil(hi / step) * step, interval: step };
+}
+
+/** Plage d'une allure (s/km) : les arrêts et marches ne tirent pas l'axe vers le lent (plafond = médiane × 1,3) */
+export function paceRange(values: (number | null)[]): [number, number] | null {
+  const v = values.filter((x): x is number => x != null && x > 0).sort((a, b) => a - b);
+  if (v.length < 4) return null;
+  const med = v[Math.floor(v.length / 2)];
+  const lo = v[Math.floor(v.length * 0.03)], hi = Math.min(v[Math.floor(v.length * 0.97)], med * 1.3);
+  return hi > lo ? [lo, hi] : null;
+}
+
+/** Valeurs hors de l'axe → null : la courbe s'interrompt (arrêt, perte GPS) au lieu de plonger hors du cadre */
+export function clipToAxis(values: (number | null)[], ax: { min: number; max: number }): (number | null)[] {
+  return values.map((v) => (v == null || v < ax.min || v > ax.max ? null : v));
+}

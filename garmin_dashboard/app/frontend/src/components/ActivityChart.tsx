@@ -4,7 +4,7 @@ import { Chart } from "@/components/common";
 import { fmtPaceSec, nf } from "@/lib/format";
 import { C } from "@/lib/palette";
 import { axisPointerLine, axisText, tipRow, tipTitle, tooltipBase, type EChartsInstance, type Opt } from "@/lib/echarts";
-import { range90, smooth, type Prepared } from "@/lib/series";
+import { clipToAxis, niceAxis, paceRange, range90, smooth, type Prepared } from "@/lib/series";
 
 export interface ActivityChartHandle {
   /** Place le curseur du graphique à une distance donnée (m), ou le retire (null). */
@@ -72,9 +72,13 @@ export const ActivityChart = forwardRef<ActivityChartHandle, { prep: Prepared; o
         axisPointer: { show: true, ...axisPointerLine },
       }));
 
-      const lineBase = { type: "line", showSymbol: false, symbol: "none", smooth: false, sampling: "lttb" as const, animation: false };
+      const lineBase = { type: "line", showSymbol: false, symbol: "none", smooth: 0.3, smoothMonotone: "x", connectNulls: false, sampling: "lttb" as const, animation: false };
       const yBase = { splitNumber: 3, axisLine: { show: false }, axisTick: { show: false }, axisLabel: axisText, splitLine: { lineStyle: { color: C.grid } } };
 
+      // axe d'allure rond ; les arrêts (allure hors axe) coupent la courbe au lieu de la faire plonger
+      const pr = showPace ? paceRange(data.pace) : range90(data.spd);
+      const paceAx = !pr ? null : showPace ? niceAxis(pr, { pad: 0.25, pace: true }) : (() => { const k = niceAxis([pr[0] * 3.6, pr[1] * 3.6], { pad: 0.25 }); return { min: k.min / 3.6, max: k.max / 3.6, interval: k.interval / 3.6 }; })();
+      const paceVals = paceAx ? clipToAxis(showPace ? data.pace : data.spd, paceAx) : showPace ? data.pace : data.spd;
       const yAxes: Opt[] = [];
       const series: Opt[] = [];
       rows.forEach((r, i) => {
@@ -99,12 +103,7 @@ export const ActivityChart = forwardRef<ActivityChartHandle, { prep: Prepared; o
             gridIndex: i,
             inverse: showPace,
             scale: true,
-            ...(() => {
-              const r = range90(showPace ? data.pace : data.spd);
-              if (!r) return {};
-              const pad = (r[1] - r[0]) * 0.25;
-              return { min: Math.max(0, r[0] - pad), max: r[1] + pad };
-            })(),
+            ...(paceAx ? { min: paceAx.min, max: paceAx.max, interval: paceAx.interval } : {}),
             axisLabel: { ...axisText, formatter: (v: number) => (showPace ? fmtPaceSec(v) : `${nf(v * 3.6)}`) },
           });
           series.push({
@@ -112,7 +111,7 @@ export const ActivityChart = forwardRef<ActivityChartHandle, { prep: Prepared; o
             name: showPace ? "Allure" : "Vitesse",
             xAxisIndex: i,
             yAxisIndex: i,
-            data: data.x.map((x, k) => [x, showPace ? data.pace[k] : data.spd[k]]),
+            data: data.x.map((x, k) => [x, paceVals[k]]),
             lineStyle: { width: 2, color: C.blue },
           });
         }
