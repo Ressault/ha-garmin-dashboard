@@ -526,8 +526,6 @@ export function Records() {
                   {yr !== "all" && <Sm className="mt-2">Classement de l'année {yr}.</Sm>}
                 </div>
               )}
-              <Hr />
-              <P className="text-label2">Calculé sur {cur?.efforts.length ?? 0} sortie{(cur?.efforts.length ?? 0) > 1 ? "s" : ""}, avec des fenêtres glissantes comme Strava. Course et trail sont comptés à part, comme chez Strava ; les erreurs GPS impossibles sont écartées.</P>
             </Card>
             <Card>
               <Lbl>Tous mes records · {SPORTS.find((s) => s.k === sport)?.label}</Lbl>
