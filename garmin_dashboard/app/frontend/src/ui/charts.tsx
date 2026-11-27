@@ -429,6 +429,7 @@ const MEDAL_FILL = [
 ];
 export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fmtY: (v: number) => string; label: string }) {
   const [ref, W] = useW(340);
+  const gid = `rc${useId().replace(/:/g, "")}`;
   const H = 204, T0 = 40, B = 26, G = 58; // G : gouttière droite pour les graduations
   if (points.length === 0) return null;
   const pts = [...points].sort((a, b) => a.t - b.t);
@@ -441,16 +442,15 @@ export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fm
   const PW = W - G;
   const X = (t: number) => (t1 === t0 ? PW / 2 : 12 + ((t - t0) / (t1 - t0)) * (PW - 24));
   const Y = (v: number) => T0 + (1 - (v - lo) / (hi - lo)) * (H - T0 - B);
-  // meilleur temps à date : escalier qui ne monte qu'à chaque nouveau record
-  let best = -Infinity, d = "";
-  pts.forEach((p, i) => {
-    if (p.v > best) {
-      const x = X(p.t), y = Y(p.v);
-      d += i === 0 ? `M${x.toFixed(1)},${y.toFixed(1)}` : ` H${x.toFixed(1)} V${y.toFixed(1)}`;
-      best = p.v;
-    }
-  });
-  d += ` H${(PW - 4).toFixed(1)}`;
+  // progression du meilleur temps : courbe lissée qui passe par chaque nouveau record, puis se prolonge à plat
+  let best = -Infinity;
+  const rec: [number, number][] = [];
+  pts.forEach((p) => { if (p.v > best) { rec.push([X(p.t), Y(p.v)]); best = p.v; } });
+  const endX = PW - 4;
+  if (rec.length && rec[rec.length - 1][0] < endX) rec.push([endX, rec[rec.length - 1][1]]);
+  const d = rec.length > 1 ? smoothPath(rec) : "";
+  const baseY = H - B;
+  const area = d ? `${d} L${rec[rec.length - 1][0].toFixed(1)},${baseY} L${rec[0][0].toFixed(1)},${baseY} Z` : "";
   const grid = [hi - padV, (lo + hi) / 2, lo + padV];
   const dateTxt = (t: number) => new Date(t).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "2-digit" });
   // médailles au-dessus de leur point, décalées vers le haut quand elles se touchent
@@ -469,8 +469,15 @@ export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fm
           <text x={W} y={Y(v) + 4} fontSize="11" textAnchor="end" className={T}>{fmtY(v)}</text>
         </g>
       ))}
-      <path d={d} fill="none" stroke="var(--sys-blue)" strokeWidth="2" strokeOpacity=".55" strokeLinejoin="round" />
-      {pts.filter((p) => p.medal == null).map((p, i) => <circle key={i} cx={X(p.t)} cy={Y(p.v)} r="3.5" fill="var(--sys-blue)" fillOpacity=".45" />)}
+      <defs>
+        <linearGradient id={gid} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="var(--sys-blue)" stopOpacity=".26" />
+          <stop offset="1" stopColor="var(--sys-blue)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {pts.filter((p) => p.medal == null).map((p, i) => <circle key={i} cx={X(p.t)} cy={Y(p.v)} r="3" fill="var(--sys-blue)" fillOpacity=".3" />)}
+      {area && <path d={area} fill={`url(#${gid})`} />}
+      {d && <path d={d} fill="none" stroke="var(--sys-blue)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
       {lane.map(({ p, x, y, bx }, i) => {
         const m = MEDAL_FILL[p.medal as number];
         return (
