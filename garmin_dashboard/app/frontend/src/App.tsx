@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from "@/lib/theme";
 import { routeKey, sectionOf, subviewDir, useRoute, type Route } from "@/lib/route";
 import { useEdgeFades, usePageSwipe } from "@/ui/scrub";
 import { Sidebar, TabBar } from "@/ui/shell";
+import { LoginGate } from "@/ui/status";
 import { Activites, Entrainement, Progres, Records } from "@/views/Activite";
 import { Forme, Piliers, Sommeil } from "@/views/Longevite";
 import Programme from "@/views/Programme";
@@ -121,6 +122,7 @@ export default function App() {
         <DataProvider>
           <TooltipProvider>
             <Shell />
+            <LoginGate />
             <Toaster position="bottom-right" offset={{ bottom: 24, right: 24 }} mobileOffset={{ bottom: 96 }} />
           </TooltipProvider>
         </DataProvider>

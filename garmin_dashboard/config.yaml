@@ -1,5 +1,5 @@
 name: Garmin Dashboard
-version: "1.1.47"
+version: "1.2.0"
 slug: garmin_dashboard
 description: Suivi sportif et santé Garmin (remplace Strava Premium), accessible 24 h/24
 url: https://github.com/Ressault/ha-garmin-dashboard
@@ -10,6 +10,8 @@ init: false
 startup: application
 boot: auto
 watchdog: http://[HOST]:[PORT:8000]/api/health
+# Sert uniquement à afficher une notification dans Home Assistant quand la synchro Garmin échoue
+homeassistant_api: true
 ports:
   8000/tcp: 8000
 ports_description:
@@ -20,8 +22,10 @@ options:
   garmin_password: ""
   garmin_tokens: ""
   initial_sync_days: 365
+  access_code: ""
 schema:
   garmin_email: str?
   garmin_password: password?
   garmin_tokens: str?
   initial_sync_days: int(30,1500)
+  access_code: password?

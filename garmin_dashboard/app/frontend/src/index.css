@@ -2,9 +2,7 @@
 @import "tw-animate-css";
 @import "leaflet/dist/leaflet.css";
 
-/* Tremor est une lib Tailwind v3 : on lui indique où scanner ses classes et on pré-génère
-   les classes de couleur qu'il compose dynamiquement (color="blue", etc.). */
-@source "../node_modules/@tremor/react/dist";
+/* Classes de couleur composées dynamiquement (color="blue", etc.) : pré-générées pour Tailwind. */
 @source inline("{,dark:}{bg,text,stroke,fill}-{blue,pink,green,orange,red,cyan,violet,gray,amber,yellow,emerald}-{100,400,500,600}");
 
 @custom-variant dark (&:is(.dark *));
@@ -244,7 +242,7 @@ svg text {
 }
 .bar-fill {
   transform-origin: left;
-  animation: bar-fill 700ms var(--ease-out-strong) 120ms both;
+  animation: bar-fill 450ms var(--ease-out-strong) 80ms both;
 }
 @keyframes hero-in {
   from {
@@ -323,16 +321,17 @@ input.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(10 1
   --card-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(30 40 90 / 0.12);
   --ok: #248a3d;
   --warn: #a24600;
+  --warn-text: #8f3d00; --warn-bg: #fff0db; --bad-text: #c4002b; --pink-text: #c4002b; --blue-text: #0a64d8;
   --info: #0a55b8;
   /* couleurs système iOS (séries des graphiques), variantes sombres plus bas */
   --sys-red: #ff3b30; --sys-orange: #ff9500; --sys-green: #34c759; --sys-teal: #30b0c7;
   --sys-blue: #007aff; --sys-indigo: #5856d6; --sys-purple: #af52de; --sys-pink: #ff2d55;
-  --stage-deep-text: #3a2fa8;
+  --stage-deep-text: #3a2fa8; --stage-awake-text: #b23a21; --stage-rem-text: #0b7285; --stage-light-text: #2f4fe0;
 }
 .dark {
   --sys-red: #ff453a; --sys-orange: #ff9f0a; --sys-green: #30d158; --sys-teal: #40cbe0;
   --sys-blue: #0a84ff; --sys-indigo: #5e5ce6; --sys-purple: #bf5af2; --sys-pink: #ff375f;
-  --stage-deep-text: #9a94ff;
+  --stage-deep-text: #9a94ff; --stage-awake-text: #ff9a85; --stage-rem-text: #5cd0e8; --stage-light-text: #8fa4ff;
   --label2: #98989d;
   --label3: #8e8e93;
   --sep: rgb(84 84 88 / 0.45);
@@ -343,6 +342,7 @@ input.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(10 1
   --card-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset;
   --ok: #30d158;
   --warn: #ff9f0a;
+  --warn-text: #ffb340; --warn-bg: rgb(255 159 10 / 0.16); --bad-text: #ff6961; --pink-text: #ff6482; --blue-text: #409cff;
   --info: #64a8ff;
 }
 @theme inline {
@@ -474,8 +474,12 @@ html[data-refract] .hk-drop { backdrop-filter: url(#hk-lens); }
 .hk-stagger > *:nth-child(n + 6) { animation-delay: 200ms; }
 
 /* Cœur : battement au rythme de la FC au repos, cœur flou en écho derrière */
-.hk-beat { transform-origin: 50% 55%; animation: hk-beat var(--beat, 1.1s) var(--ease-out-strong) infinite; }
-.hk-ghost { filter: blur(16px); transform-origin: 50% 55%; animation: hk-ghost var(--beat, 1.1s) var(--ease-out-strong) infinite; }
+/* Le bandeau « hors ligne » ne double pas la carte « Données indisponibles » */
+.hk-page:has([role="alert"]) .hk-netbanner { display: none; }
+
+/* Trois battements à l'ouverture, puis image fixe : une boucle sans fin fait travailler l'écran en permanence */
+.hk-beat { transform-origin: 50% 55%; animation: hk-beat var(--beat, 1.1s) var(--ease-out-strong) 3; }
+.hk-ghost { filter: blur(16px); opacity: 0.4; transform: scale(1.04); transform-origin: 50% 55%; animation: hk-ghost var(--beat, 1.1s) var(--ease-out-strong) 3; }
 @keyframes hk-beat { 0% { transform: scale(1); } 12% { transform: scale(1.07); } 26% { transform: scale(0.99); } 38% { transform: scale(1.04); } 60%, 100% { transform: scale(1); } }
 @keyframes hk-ghost { 0% { transform: scale(1); opacity: 0.5; } 18% { transform: scale(1.16); opacity: 0.8; } 70%, 100% { transform: scale(1.04); opacity: 0.4; } }
 
@@ -531,7 +535,7 @@ html[data-scrub] .hk-chip[aria-current="page"], html[data-scrub] .hk-tab[aria-cu
     inset 0 1px 0 0 rgba(255, 255, 255, 0.95), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.45),
     inset 0 0 0 1px rgba(255, 255, 255, 0.55), 0 1px 3px rgba(20, 30, 70, 0.06);
 }
-html[data-refract] .hk-pg { backdrop-filter: var(--pgf, blur(14px) saturate(180%)); }
+/* Pilules du haut : flou simple. La réfraction (coûteuse pendant le défilement) est réservée à la barre du bas. */
 /* liseré : coin haut-gauche et bas-droit plus brillants */
 .hk-pg::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
@@ -605,15 +609,15 @@ nav.hk-carousel > a.hk-chip { pointer-events: auto; }
 /* pilules du haut : tout ce qui suit le bandeau glisse ; le titre et le bandeau ne bougent pas */
 .hk-layer[data-kind="slide"][data-role="out"] .hk-page > * { visibility: hidden; }
 .hk-layer[data-kind="slide"][data-role="out"] .hk-page > [data-fixed] ~ * { visibility: visible; }
-.hk-layer[data-kind="slide"][data-role="in"][data-dir="1"] .hk-page > [data-fixed] ~ * { animation: sl-in-r 380ms var(--ease-ios) backwards; }
-.hk-layer[data-kind="slide"][data-role="in"][data-dir="-1"] .hk-page > [data-fixed] ~ * { animation: sl-in-l 380ms var(--ease-ios) backwards; }
-.hk-layer[data-kind="slide"][data-role="out"][data-dir="1"] .hk-page > [data-fixed] ~ * { animation: sl-out-l 380ms var(--ease-ios) both; }
-.hk-layer[data-kind="slide"][data-role="out"][data-dir="-1"] .hk-page > [data-fixed] ~ * { animation: sl-out-r 380ms var(--ease-ios) both; }
+.hk-layer[data-kind="slide"][data-role="in"][data-dir="1"] .hk-page > [data-fixed] ~ * { animation: sl-in-r 280ms var(--ease-ios) backwards; }
+.hk-layer[data-kind="slide"][data-role="in"][data-dir="-1"] .hk-page > [data-fixed] ~ * { animation: sl-in-l 280ms var(--ease-ios) backwards; }
+.hk-layer[data-kind="slide"][data-role="out"][data-dir="1"] .hk-page > [data-fixed] ~ * { animation: sl-out-l 280ms var(--ease-ios) both; }
+.hk-layer[data-kind="slide"][data-role="out"][data-dir="-1"] .hk-page > [data-fixed] ~ * { animation: sl-out-r 280ms var(--ease-ios) both; }
 .hk-layer[data-kind] .hk-stagger > * { animation: none; }
 /* halo coloré : fondu progressif d'une page à l'autre */
-.hk-layer[data-kind="slide"][data-role="in"] .hk-page::before { animation: halo-in 380ms ease-out backwards; }
-.hk-layer[data-kind="slide"][data-role="out"] .hk-page::before { animation: halo-out 380ms ease-out both; }
-.hk-layer[data-kind="slide"][data-role="in"] { animation: sl-in-done 380ms linear backwards; }
+.hk-layer[data-kind="slide"][data-role="in"] .hk-page::before { animation: halo-in 280ms ease-out backwards; }
+.hk-layer[data-kind="slide"][data-role="out"] .hk-page::before { animation: halo-out 280ms ease-out both; }
+.hk-layer[data-kind="slide"][data-role="in"] { animation: sl-in-done 280ms linear backwards; }
 @keyframes sl-in-done { from { outline-color: transparent; } } /* marqueur de fin sans opacité : une opacité animée sur la page assombrit le verre des pilules */
 @media (prefers-reduced-motion: reduce) {
   .hk-layer[data-kind="slide"] .hk-page > * { animation: none !important; visibility: visible !important; }

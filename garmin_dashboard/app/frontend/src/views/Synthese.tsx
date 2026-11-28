@@ -3,15 +3,16 @@ import { Fragment, useMemo, useState } from "react";
 import { MiniTrack } from "@/components/MiniTrack";
 import { useQuery } from "@/hooks/useQuery";
 import { api, type ActivityListItem, type FitnessDay } from "@/lib/api";
-import { addDays, fmtClock, fmtHM, isoDate, nf, parseDay, speedDisplay } from "@/lib/format";
+import { addDays, fmtClockMin, fmtHM, isoDate, nf, parseDay, READINESS_ZONES, readinessInfo, speedDisplay } from "@/lib/format";
 import { PATH } from "@/lib/route";
 import { Bars, Gauge, LevelBars } from "@/ui/charts";
-import { byGroup, GROUP_META, GROUP_ORDER, groupOf, lastWith, pct, readiness, totals, windows } from "@/ui/derive";
+import { byGroup, GROUP_META, groupOf, lastWith, readiness, totals, windows, type Group } from "@/ui/derive";
 import { BigHeart, GROUP_ICON, MiniHeart, MiniPillars, MiniSleep, MiniTrend } from "@/ui/icons";
 import { Badge, Card, Chip, ChipRow, Delta, Hr, Lbl, P, Page, Sm, Skel, Stagger, Val } from "@/ui/kit";
 import { Avatar, ProfileDialog, useProfile } from "@/ui/profile";
 import { SyncButton, ThemeToggle } from "@/ui/shell";
 import { dow, useActivities, useHealth, usePillars } from "@/ui/data";
+import { Guard, MeasuredAt, SyncLine } from "@/ui/status";
 
 /* ---------- Pastilles de raccourcis (partagées avec les autres écrans) ---------- */
 function Profile() {
@@ -23,7 +24,7 @@ function Profile() {
         <Avatar size={64} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[30px] leading-[1.1] font-bold tracking-[-0.02em]">{name}</span>
-          <Sm className="mt-0.5">Synchronisé avec Garmin toutes les 20 min</Sm>
+          <SyncLine />
         </span>
       </button>
       <div className="flex gap-2 md:hidden">
@@ -35,17 +36,26 @@ function Profile() {
   );
 }
 
+/** Préparation du jour : le score de la montre (Garmin) d'abord, avec le temps de récupération restant.
+ *  Sans score Garmin, l'estimation maison (VFC, sommeil, charge) prend le relais, annoncée comme telle. */
 function ReadinessCard({ series, next }: { series: FitnessDay[]; next: string | null }) {
   const r = readiness(series);
-  const today = series[series.length - 1];
+  const g = lastWith(series, "readiness_score", 1);
   if (!r) return null;
-  const steps = ["Récupérer", "Modéré", "Prêt", "Optimal"] as const;
-  const advice =
-    r.status === "Récupérer"
-      ? "Ton corps récupère : une journée de repos ou une sortie très facile est le bon choix."
-      : r.status === "Modéré"
-        ? next ? `Reste sur des efforts faciles aujourd'hui. Prochaine séance : ${next}.` : "Reste sur des efforts faciles aujourd'hui."
-        : next ? `Tu peux attaquer ta prochaine séance : ${next}.` : "Tu peux placer une séance intense aujourd'hui.";
+  const score = g?.readiness_score ?? null;
+  const info = readinessInfo(score);
+  const rec = g?.recovery_time_h ?? null;
+  const own = ["Récupérer", "Modéré", "Prêt", "Optimal"] as const;
+  const steps: readonly string[] = info ? READINESS_ZONES.map((z) => z.label) : own;
+  const status = info ? info.label : r.status;
+  // Feu vert seulement si la montre le donne aussi : score élevé et récupération presque terminée
+  const go = info ? score! >= 75 && (rec == null || rec <= 6) : r.status === "Prêt" || r.status === "Optimal";
+  const easy = info ? score! < 50 || (rec != null && rec > 24) : r.status === "Récupérer";
+  const advice = easy
+    ? "Ton corps récupère : repos ou sortie très facile aujourd'hui."
+    : go
+      ? next ? `Tu peux attaquer ta prochaine séance : ${next}.` : "Tu peux placer une séance intense aujourd'hui."
+      : next ? `Reste sur des efforts faciles ou modérés. Prochaine séance : ${next}.` : "Reste sur des efforts faciles ou modérés aujourd'hui.";
   const Row = ({ ok, name, detail, label }: { ok: boolean; name: string; detail: string; label: string }) => (
     <div className="flex items-center gap-2.5 text-[15px]">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="shrink-0">
@@ -65,22 +75,23 @@ function ReadinessCard({ series, next }: { series: FitnessDay[]; next: string | 
       <div className="flex items-start justify-between">
         <div>
           <Lbl>Préparation du jour</Lbl>
-          <Val size={24}>{r.status === "Modéré" ? "Modérée" : r.status === "Prêt" ? "Prêt" : r.status}</Val>
-          {today?.readiness_score != null && (
+          <Val size={24}>{status === "Modéré" ? "Modérée" : status}</Val>
+          <Sm className="mt-1">{info ? "Score Garmin sur 100" : "Estimation sur 10, sans score Garmin"}</Sm>
+          {rec != null && rec > 0.5 && (
             <>
-              <Lbl className="mt-3">Garmin</Lbl>
-              <Val size={17}>{nf(today.readiness_score)} / 100</Val>
+              <Lbl className="mt-3">Récupération</Lbl>
+              <Val size={17}>encore {rec >= 10 ? nf(rec) : nf(rec, 1)} h</Val>
             </>
           )}
         </div>
-        <Gauge value={r.score} label={`Préparation ${r.score} sur 10`} />
+        {info ? <Gauge value={score} max={100} label={`Préparation Garmin ${nf(score)} sur 100`} /> : <Gauge value={r.score} label={`Préparation estimée ${r.score} sur 10`} />}
       </div>
-      {/* échelle d'état (non cliquable) : 4 zones, celle du jour en couleur */}
-      <div className="mt-4 grid grid-cols-4 gap-1" role="img" aria-label={`Échelle : ${steps.join(", ")} ; aujourd'hui ${r.status}`}>
-        {steps.map((s) => (
-          <span key={s} className="flex flex-col items-center gap-1.5">
-            <span className="block h-1.5 w-full rounded-full" style={{ background: s === r.status ? "var(--sys-blue)" : "var(--fill2)" }} />
-            <span className={`text-[12px] ${s === r.status ? "font-semibold text-foreground" : "text-label2"}`}>{s}</span>
+      {/* échelle d'état (non cliquable) : la zone du jour en couleur */}
+      <div className="mt-4 grid gap-1" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} role="img" aria-label={`Échelle : ${steps.join(", ")} ; aujourd'hui ${status}`}>
+        {steps.map((st) => (
+          <span key={st} className="flex flex-col items-center gap-1.5">
+            <span className="block h-1.5 w-full rounded-full" style={{ background: st === status ? "var(--sys-blue)" : "var(--fill2)" }} />
+            <span className={`text-center text-[11px] leading-tight ${st === status ? "font-semibold text-foreground" : "text-label2"}`}>{st}</span>
           </span>
         ))}
       </div>
@@ -130,7 +141,7 @@ function GoalCard() {
             {next.title}
             {next.km ? ` · ${nf(next.km)} km` : ""}
           </Val>
-          {next.description && <P className="mt-1 text-label2">{next.description}</P>}
+          {next.description && <P className="mt-1 text-label2">{next.description.replace(/\bbpm\b/g, "BPM")}</P>}
         </>
       )}
     </Card>
@@ -179,15 +190,18 @@ function LastActivity({ a }: { a: ActivityListItem }) {
   );
 }
 
+const VOLUME_GROUPS: Group[] = ["foot", "road", "mtb", "walk", "gym", "other"];
+
 function VolumeCard({ acts }: { acts: ActivityListItem[] }) {
   const w = windows();
   const now = byGroup(acts, ...w.last7);
   const prev = byGroup(acts, ...w.prev7);
   const tn = totals(acts, ...w.last7), tp = totals(acts, ...w.prev7);
-  const rows = GROUP_ORDER.map((g) => ({ g, now: now[g].secs, prev: prev[g].secs })).filter((r) => r.now > 0 || r.prev > 0).sort((x, y) => y.now - x.now || y.prev - x.prev);
+  const rows = VOLUME_GROUPS.map((g) => ({ g, now: now[g].secs, prev: prev[g].secs })).filter((r) => r.now > 0 || r.prev > 0).sort((x, y) => y.now - x.now || y.prev - x.prev);
   const mx = Math.max(1, ...rows.map((r) => Math.max(r.now, r.prev)));
   const dt = tn.secs - tp.secs;
-  const dk = pct(tn.km, tp.km);
+  // La distance n'a de sens que par sport : on affiche celle à pied (course et trail), pas un total vélo + course + marche
+  const dk = now.foot.km - prev.foot.km;
   return (
     <Card href={PATH.activites}>
       <div className="flex items-baseline justify-between">
@@ -196,14 +210,14 @@ function VolumeCard({ acts }: { acts: ActivityListItem[] }) {
       </div>
       <div className="mt-2 grid grid-cols-3 gap-2">
         <div>
-          <Sm>Temps</Sm>
+          <Sm>Temps actif</Sm>
           <Val>{fmtHM(tn.secs)}</Val>
           <Delta value={dt} text={`${dt > 0 ? "+" : "−"}${fmtHM(Math.abs(dt))}`} />
         </div>
         <div>
-          <Sm>Distance</Sm>
-          <Val>{nf(tn.km, 1)} km</Val>
-          <Delta value={dk} text={`${(dk ?? 0) > 0 ? "+" : "−"}${nf(Math.abs(dk ?? 0))} %`} />
+          <Sm>À pied</Sm>
+          <Val>{nf(now.foot.km, 1)} km</Val>
+          <Delta value={dk} text={`${dk > 0 ? "+" : "−"}${nf(Math.abs(dk), 1)} km`} />
         </div>
         <div>
           <Sm>Activités</Sm>
@@ -232,13 +246,14 @@ function VolumeCard({ acts }: { acts: ActivityListItem[] }) {
               );
             })}
           </ul>
+          <Sm className="mt-3"><span aria-hidden className="mr-1.5 inline-block h-2.5 w-[2px] rounded bg-foreground/40 align-[-1px]" />repère = les 7 jours d'avant · temps hors pauses</Sm>
         </>
       )}
     </Card>
   );
 }
 
-export function HeartWidget({ latest, today }: { latest: FitnessDay; today?: { date: string; min: number | null; max: number | null; resting_7d: number | null } | null }) {
+export function HeartWidget({ latest, today, measuredAt }: { latest: FitnessDay; today?: { date: string; min: number | null; max: number | null; resting_7d: number | null } | null; measuredAt?: string | null }) {
   const bpm = latest.resting_hr;
   return (
     <Card tint="pink" href={PATH.forme}>
@@ -255,6 +270,7 @@ export function HeartWidget({ latest, today }: { latest: FitnessDay; today?: { d
               <Val>
                 {today.min}–{today.max} BPM
               </Val>
+              {today.date === isoDate(new Date()) && <MeasuredAt at={measuredAt} />}
             </>
           )}
         </div>
@@ -277,20 +293,21 @@ export function HeartWidget({ latest, today }: { latest: FitnessDay; today?: { d
   );
 }
 
-function BodyBattery({ latest, points }: { latest: FitnessDay; points: [number, number][] }) {
+function BodyBattery({ latest, points, measuredAt }: { latest: FitnessDay; points: [number, number][]; measuredAt?: string | null }) {
   return (
     <Card tint="cyan">
       <div className="flex items-start justify-between">
         <div>
           <Lbl>Body Battery</Lbl>
           <Val size={34}>{latest.body_battery_now != null ? nf(latest.body_battery_now) : "—"}</Val>
+          <MeasuredAt at={measuredAt} className="mt-0.5" />
         </div>
         <div className="text-right">
           <Sm><span aria-hidden className="mr-1 inline-block size-2 rounded-full bg-[var(--sys-teal)] align-[1px]" />Recharge cette nuit</Sm>
           <Val size={17} style={{ color: "#0E7C93" }}>
             {latest.body_battery_charged != null ? `+${nf(latest.body_battery_charged)}` : "—"}
           </Val>
-          <Sm className="mt-1"><span aria-hidden className="mr-1 inline-block size-2 rounded-full bg-[var(--sys-teal)] align-[1px] opacity-35" />Dépensé aujourd'hui</Sm>
+          <Sm className="mt-1"><span aria-hidden className="mr-1 inline-block size-2 rounded-full bg-[var(--sys-teal)] align-[1px] opacity-35" />Dépensé depuis le réveil</Sm>
           <Val size={17}>{latest.body_battery_drained != null ? `−${nf(latest.body_battery_drained)}` : "—"}</Val>
         </div>
       </div>
@@ -330,21 +347,21 @@ export function ShortcutChips({ current }: { current?: string }) {
   const { fit } = useHealth();
   const { colors, greens } = usePillars();
   const l = fit?.latest;
-  const preds = useQuery("predictions-400", () => api.predictions(400));
-  const half = preds.data?.latest?.time_half_s;
+  const est = useQuery("estimate", () => api.estimate());
+  const h = est.data?.half;
   const sleepLabel = l?.sleep_score == null ? "—" : l.sleep_score >= 80 ? "Bon" : l.sleep_score >= 60 ? "Correct" : "Faible";
   return (
     <ChipRow label="Raccourcis">
-      <Chip href={PATH.piliers} current={current === "piliers"} icon={<MiniPillars colors={colors} />} label="Mes piliers" value={colors.length ? `${greens} sur 4 au vert` : "—"} />
+      <Chip href={PATH.piliers} current={current === "piliers"} icon={<MiniPillars colors={colors} />} label="Mes piliers" value={colors.length ? `${greens} sur 4 OK` : "—"} />
       <Chip href={PATH.sommeil} current={current === "sommeil"} icon={<MiniSleep score={l?.sleep_score != null ? Math.round(l.sleep_score) : null} />} label="Sommeil" value={sleepLabel} />
       <Chip href={PATH.forme} current={current === "forme"} icon={<MiniHeart />} label="Forme et santé" value={l?.resting_hr != null ? `${nf(l.resting_hr)} BPM` : "—"} />
-      <Chip href={PATH.progres} icon={<MiniTrend />} label="Progrès" value={half ? `Semi ${fmtClock(half).slice(0, -3)}` : "—"} />
+      <Chip href={PATH.progres} icon={<MiniTrend />} label="Progrès" value={h ? `Semi ≈ ${fmtClockMin((h.low_s + h.high_s) / 2)}` : "—"} />
     </ChipRow>
   );
 }
 
 export default function Synthese() {
-  const { fit, det } = useHealth();
+  const { fit, det, fitQ } = useHealth();
   const acts = useActivities();
   const plans = useQuery("plans", () => api.plans());
   const id = plans.data?.plans[0]?.id;
@@ -366,23 +383,25 @@ export default function Synthese() {
     <Page tint="blue">
       <Profile />
       <ShortcutChips />
-      <h2 className="mx-1 mt-6 mb-3 text-[22px] font-bold tracking-[-0.015em] md:text-[24px]">Aujourd'hui</h2>
-      {!fit ? (
-        <Stagger>
-          <Skel h={380} />
-          <Skel h={260} />
-        </Stagger>
-      ) : (
-        <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2 2xl:grid-cols-3">
-          <ReadinessCard series={series} next={next} />
-          <GoalCard />
-          {last && <LastActivity a={last} />}
-          {items.length > 0 && <VolumeCard acts={items} />}
-          {latest && <HeartWidget latest={latest} today={heartToday} />}
-          {latest && <BodyBattery latest={latest} points={bbPoints} />}
-          <SleepWeek series={series} href={PATH.sommeil} />
-        </div>
-      )}
+      <h1 className="mx-1 mt-6 mb-3 text-[22px] font-bold tracking-[-0.015em] md:text-[24px]">Aujourd'hui</h1>
+      <Guard queries={[fitQ, acts]}>
+        {!fit ? (
+          <Stagger>
+            <Skel h={380} />
+            <Skel h={260} />
+          </Stagger>
+        ) : (
+          <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2 2xl:grid-cols-3">
+            <ReadinessCard series={series} next={next} />
+            <GoalCard />
+            {last && <LastActivity a={last} />}
+            {items.length > 0 && <VolumeCard acts={items} />}
+            {latest && <HeartWidget latest={latest} today={heartToday} measuredAt={fit.measured_at} />}
+            {latest && <BodyBattery latest={latest} points={bbPoints} measuredAt={fit.measured_at} />}
+            <SleepWeek series={series} href={PATH.sommeil} />
+          </div>
+        )}
+      </Guard>
     </Page>
   );
 }

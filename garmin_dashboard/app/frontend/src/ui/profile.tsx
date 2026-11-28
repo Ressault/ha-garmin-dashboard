@@ -4,12 +4,12 @@ import { api, type Profile } from "@/lib/api";
 
 /* ---------- Profil partagé (prénom + photo) : serveur = référence, localStorage = affichage instantané ---------- */
 const KEY = "profile-v1";
-const DEFAULT: Profile = { name: "Antonin", photo: "" };
+const DEFAULT: Profile = { name: "Mon profil", photo: "", coach_note: "" };
 
 function load(): Profile {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (v && typeof v.name === "string") return { name: v.name, photo: v.photo || "" };
+    if (v && typeof v.name === "string") return { name: v.name, photo: v.photo || "", coach_note: v.coach_note || "" };
   } catch {
     /* stockage indisponible */
   }
@@ -38,7 +38,7 @@ export function useProfile(): Profile {
       .profile()
       .then((p) => {
         // Serveur vide (premier lancement) : on garde les valeurs par défaut
-        if (p.name || p.photo) set({ name: p.name || DEFAULT.name, photo: p.photo });
+        if (p.name || p.photo || p.coach_note) set({ name: p.name || current.name || DEFAULT.name, photo: p.photo, coach_note: p.coach_note || "" });
       })
       .catch(() => {
         fetched = false;
@@ -55,7 +55,7 @@ export function useProfile(): Profile {
 
 export function Avatar({ size = 64, className = "" }: { size?: number; className?: string }) {
   const { name, photo } = useProfile();
-  const initial = (name.trim()[0] || "A").toUpperCase();
+  const initial = (name.trim()[0] || "M").toUpperCase();
   return (
     <span
       aria-hidden
@@ -184,6 +184,7 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
   const cur = useProfile();
   const [name, setName] = useState(cur.name);
   const [photo, setPhoto] = useState(cur.photo);
+  const [note, setNote] = useState(cur.coach_note);
   const [orig, setOrig] = useState(""); // dernière photo choisie, gardée en pleine taille pour pouvoir la recadrer à nouveau
   const [crop, setCrop] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -195,6 +196,7 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
     if (open && !d.open) {
       setName(cur.name);
       setPhoto(cur.photo);
+      setNote(cur.coach_note);
       setCrop(null);
       setErr("");
       d.showModal();
@@ -221,8 +223,8 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
   const save = async () => {
     setBusy(true);
     try {
-      const saved = await api.saveProfile({ name: name.trim() || DEFAULT.name, photo });
-      set({ name: saved.name || DEFAULT.name, photo: saved.photo });
+      const saved = await api.saveProfile({ name: name.trim() || DEFAULT.name, photo, coach_note: note.trim() });
+      set({ name: saved.name || DEFAULT.name, photo: saved.photo, coach_note: saved.coach_note || "" });
       onClose();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Enregistrement impossible.");
@@ -231,7 +233,7 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
     }
   };
 
-  const initial = (name.trim()[0] || "A").toUpperCase();
+  const initial = (name.trim()[0] || "M").toUpperCase();
   return (
     <dialog ref={ref} className="hk-dialog" onClose={onClose} onClick={(e) => e.target === ref.current && onClose()} aria-labelledby="profil-titre">
       {crop ? (
@@ -306,6 +308,16 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
               autoComplete="given-name"
               enterKeyHint="done"
               className="h-12 rounded-xl border-0 bg-[var(--fill)] px-4 text-[17px] text-[var(--foreground)] outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]/60"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="px-1 text-[13px] text-label2">Points à surveiller (ajoutés au bilan copié)</span>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={500}
+              rows={3}
+              className="rounded-xl border-0 bg-[var(--fill)] px-4 py-3 text-[16px] leading-snug text-[var(--foreground)] outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]/60"
             />
           </label>
           {err ? (

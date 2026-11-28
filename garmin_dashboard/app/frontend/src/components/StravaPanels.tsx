@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Sparkles } from "lucide-react";
 
 import { Chart } from "@/components/common";
+import { FoldCard } from "@/components/FoldCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@/hooks/useQuery";
 import { api, type ActivityDetail, type Segment } from "@/lib/api";
@@ -211,10 +212,22 @@ function MetricChart({
     } as Opt;
   }, [prep, values, name, color, unit, inverse, fmt, avgLine, ghost, segments, refLine]);
 
-  return <Chart option={option} height={height} group={group} label={`${title} au fil de la sortie`} />;
+  const hasGhost = ghost && prep.alt.some((v) => v != null);
+  return (
+    <>
+      <Chart option={option} height={height} group={group} label={`${title} au fil de la sortie${avgLine ? `, moyenne ${fmt(avgLine)} ${unit}` : ""}${refLine ? `, repère ${refLine.label}` : ""}`} />
+      {(avgLine || hasGhost) && (
+        <p className="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
+          {avgLine ? <span className="flex items-center gap-1.5"><span aria-hidden className="inline-block w-4 border-t-2 border-dashed border-current" /> moyenne</span> : null}
+          {hasGhost ? <span className="flex items-center gap-1.5"><span aria-hidden className="inline-block h-2.5 w-4 rounded-sm" style={{ background: GHOST }} /> relief du parcours (sans échelle)</span> : null}
+        </p>
+      )}
+    </>
+  );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, fold }: { title: string; children: React.ReactNode; fold?: boolean }) {
+  if (fold) return <FoldCard title={title}>{children}</FoldCard>;
   return (
     <Card>
       <CardHeader>
@@ -406,7 +419,7 @@ export function StravaPanels({ a, prep }: { a: ActivityDetail; prep: Prepared | 
       )}
 
       {hasPwr && (
-        <Section title="Puissance">
+        <Section title="Puissance" fold>
           <MetricChart prep={prep} title="Puissance" name="Puissance" color={C.violet} values={pwrVals} unit="W" group={g} fmt={(v) => nf(v)} avgLine={avgPwr} segments={segs} refLine={t?.run_ftp_w && foot ? { value: t.run_ftp_w, label: `Seuil ${nf(t.run_ftp_w)} W` } : null} />
           <div className="mt-2">
             <StatRow label="Puissance moy." value={nf(avgPwr)} unit="W" />

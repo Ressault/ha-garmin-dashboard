@@ -74,7 +74,7 @@ export function RunningDynamics({ a, prep }: { a: ActivityDetail; prep: Prepared
                 Équilibre de contact au sol · {info.label}
                 <InfoTip label="À propos de l'équilibre">
                   Écart entre le temps de contact au sol de la jambe gauche et de la droite. Jusqu'à 1,5 point d'écart autour de 50 % : normal. Au-delà de 2,5 points,
-                  surveille ta jambe sensible et ton valgus.
+                  c'est un écart à surveiller.
                 </InfoTip>
               </p>
               <p className="text-muted-foreground mt-0.5 text-[13px]">
@@ -114,16 +114,16 @@ export function RunningDynamics({ a, prep }: { a: ActivityDetail; prep: Prepared
       {splits.length > 1 && (
         <div>
           <p className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-medium">
-            Équilibre par kilomètre
+            Équilibre par tour
             {meanBal != null && <span className="text-muted-foreground/70">· moyenne {nf(meanBal, 1)} % gauche</span>}
           </p>
-          <div className="flex h-20 items-center gap-1" role="img" aria-label="Écart à 50 % du temps de contact gauche, kilomètre par kilomètre">
+          <div className="flex h-20 items-center gap-1" role="img" aria-label="Écart à 50 % du temps de contact gauche, tour par tour">
             {splits.map((s) => {
               const dev = (s.gct_balance_left_pct as number) - 50;
               const bi = balanceInfo(s.gct_balance_left_pct)!;
               const h = Math.min(100, (Math.abs(dev) / 4) * 100);
               return (
-                <div key={s.n} className="relative flex h-full min-w-0 flex-1 flex-col justify-center" title={`km ${s.n} : ${nf(s.gct_balance_left_pct, 1)} % gauche`}>
+                <div key={s.n} className="relative flex h-full min-w-0 flex-1 flex-col justify-center" title={`tour ${s.n} : ${nf(s.gct_balance_left_pct, 1)} % gauche`}>
                   <div className="absolute inset-x-0 top-1/2 h-px bg-foreground/15" />
                   <div
                     className="absolute inset-x-[10%] rounded-[3px]"
@@ -139,7 +139,7 @@ export function RunningDynamics({ a, prep }: { a: ActivityDetail; prep: Prepared
           </div>
           <div className="text-muted-foreground/70 mt-1 flex justify-between text-[11px]">
             <span>↑ gauche plus long</span>
-            <span style={{ color: C.label3 }}>km 1 → {splits.length}</span>
+            <span style={{ color: C.label3 }}>tour 1 → {splits.length}</span>
             <span>droite plus long ↓</span>
           </div>
         </div>

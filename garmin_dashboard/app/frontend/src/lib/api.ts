@@ -6,6 +6,8 @@ export interface ActivityListItem {
   activity_date: string;
   distance_m: number | null;
   duration_s: number | null;
+  /** temps en mouvement (hors pauses) */
+  moving_duration_s?: number | null;
   elevation_gain_m: number | null;
   elevation_loss_m: number | null;
   avg_speed_ms: number | null;
@@ -18,6 +20,8 @@ export interface ActivityListItem {
   gct_balance_left_pct: number | null;
   vertical_oscillation_cm: number | null;
   stride_length_cm: number | null;
+  avg_cadence_spm?: number | null;
+  vertical_ratio_pct?: number | null;
   avg_power_w: number | null;
   has_notes: number;
   mini_track?: [number, number][] | null;
@@ -85,6 +89,13 @@ export interface Thresholds {
   bike_ftp_stale?: number | null;
   max_hr_bpm?: number | null;
   resting_hr_bpm?: number | null;
+  /** valeurs de la montre, même quand le seuil du test est adopté */
+  garmin_lt_speed_ms?: number | null;
+  garmin_lthr_bpm?: number | null;
+  /** dernier test de seuil de 30 min reconnu dans les sorties */
+  test?: ThresholdTest | null;
+  /** seuil qui sert de repère dans l'appli */
+  source?: "garmin" | "test";
 }
 
 export interface HrZone {
@@ -93,7 +104,7 @@ export interface HrZone {
   secs: number | null;
 }
 
-export interface ActivityDetail extends ActivityListItem {
+export interface ActivityDetail extends Omit<ActivityListItem, "avg_cadence_spm" | "vertical_ratio_pct"> {
   te_label: string | null;
   moving_duration_s: number | null;
   max_speed_ms: number | null;
@@ -159,6 +170,9 @@ export interface FitnessResponse {
   series: FitnessDay[];
   /** courbe Body Battery du dernier jour synchronisé : [minute du jour, valeur] */
   bb_timeline?: { date: string; points: [number, number][] } | null;
+  /** heure de la dernière donnée envoyée par la montre (AAAA-MM-JJTHH:MM:SS) */
+  measured_at?: string | null;
+  today?: string;
 }
 
 export interface PredictionDay {
@@ -189,6 +203,41 @@ export interface SyncSummary {
 export interface SyncStatus {
   running: boolean;
   last: { finished_at: string; summary_json: SyncSummary | null } | null;
+  now: string;
+  auto: "on" | "startup" | "off";
+  interval_min: number;
+  last_ok_at: string | null;
+  last_ok_age_min: number | null;
+  failing: boolean;
+  fail_count: number;
+  last_error: string | null;
+  last_error_at: string | null;
+  /** heure de la dernière donnée envoyée par la montre */
+  last_measure_at: string | null;
+  last_measure_age_min: number | null;
+}
+
+export interface ThresholdTest {
+  activity_id: number;
+  name: string | null;
+  date: string;
+  distance_m: number;
+  speed_ms: number;
+  pace_s_km: number;
+  lthr_bpm: number | null;
+}
+export interface HalfEstimate {
+  low_s: number;
+  high_s: number;
+  pace_low_s_km: number;
+  pace_high_s_km: number;
+  days: number;
+  bases: { label: string; distance_m: number; time_s: number; date: string; activity_id: number; half_s: number }[];
+}
+export interface Race {
+  name: string;
+  date: string;
+  km: number | null;
 }
 
 export type StatSport = "all" | "foot" | "run" | "trail" | "bikes" | "road" | "mtb" | "walk" | "hike" | "swim" | "strength";
@@ -286,6 +335,8 @@ export interface PlanSession extends PlanSessionInput {
   status: PlanStatus;
   done_km: number | null;
   activity_id: number | null;
+  /** séance courue la veille (-1) ou le lendemain (+1) du jour prévu */
+  shift_days?: number;
 }
 export interface PlanSummary {
   id: number;
@@ -302,6 +353,8 @@ export interface PlanDetail extends PlanSummary {
   today: string;
   sessions_detail: PlanSession[];
   weeks: { week: string; planned_km: number; done_km: number }[];
+  /** courses objectif pendant le programme ; in_plan = le programme prévoit bien la course ce jour-là */
+  races?: (Race & { in_plan: boolean; planned_title: string | null })[];
 }
 export interface RecordsResponse {
   efforts: (RecordRef & { kind: "foot" | "bike"; label: string; distance_m: number; time_s: number })[];
@@ -345,13 +398,25 @@ export interface HealthDetails {
 export interface Profile {
   name: string;
   photo: string; // data-URL JPEG, "" si aucune
+  /** points personnels à surveiller, ajoutés au bilan copié pour analyse */
+  coach_note: string;
 }
 
+/** L'API demande le code d'accès : l'écran de saisie s'affiche. */
+export class AuthError extends Error {}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    headers: init?.body ? { "Content-Type": "application/json" } : undefined,
-    ...init,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      headers: init?.body ? { "Content-Type": "application/json" } : undefined,
+      credentials: "same-origin",
+      ...init,
+    });
+  } catch {
+    throw new Error("L'appli ne répond pas. Vérifie ta connexion (Tailscale actif ?).");
+  }
+  if (res.status === 401 && !path.startsWith("/auth/")) throw new AuthError("Code d'accès requis");
   if (!res.ok) {
     let detail: string = res.statusText || `HTTP ${res.status}`;
     try {
@@ -367,7 +432,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
       /* corps non JSON (proxy Vite quand l'API est éteinte) */
     }
     if (res.status === 500 || res.status === 502 || res.status === 504) {
-      detail = "API locale injoignable (démarre-la avec start.bat)";
+      detail = "L'appli ne répond pas. Réessaie dans un instant.";
     }
     throw new Error(detail);
   }
@@ -376,6 +441,12 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  authStatus: () => req<{ required: boolean; ok: boolean }>("/auth/status"),
+  login: (code: string) => req<{ ok: boolean }>("/auth/login", { method: "POST", body: JSON.stringify({ code }) }),
+  setThresholdSource: (source: "garmin" | "test") => req<Thresholds>("/thresholds/source", { method: "PUT", body: JSON.stringify({ source }) }),
+  estimate: () => req<{ half: HalfEstimate | null }>("/coach/estimate"),
+  races: () => req<{ races: Race[]; today: string }>("/coach/races"),
+  saveRaces: (races: Race[]) => req<{ races: Race[]; today: string }>("/coach/races", { method: "PUT", body: JSON.stringify(races) }),
   activities: (p: { start?: string; limit?: number }) => {
     const q = new URLSearchParams({ limit: String(p.limit ?? 500) });
     if (p.start) q.set("start", p.start);

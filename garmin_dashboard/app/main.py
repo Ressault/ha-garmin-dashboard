@@ -1,7 +1,7 @@
 """
 API REST locale du tableau de bord Garmin.
 
-Lancement :  uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+Lancement :  uvicorn main:app --host 127.0.0.1 --port 8000
 Doc interactive : http://127.0.0.1:8000/docs
 """
 
@@ -9,9 +9,8 @@ from datetime import date, timedelta
 from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -19,18 +18,16 @@ import json
 import os
 from pathlib import Path
 
+import auth
+import coach
 import db
 import plans
 import stats
 import sync
 
 app = FastAPI(title="Garmin Dashboard local", version="0.1.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Pas de réglage CORS : l'interface et l'API ont la même origine (en développement, Vite relaie /api).
+# Un autre site web ouvert dans le navigateur ne peut donc pas lire l'API.
 
 # Compression des réponses (interface ~2 Mo → ~600 Ko, JSON ÷ 6) : l'appli s'ouvre bien plus vite sur téléphone.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -39,36 +36,96 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 @app.middleware("http")
 async def _cache_headers(request, call_next):
     """Les fichiers de /assets portent un hash dans leur nom : le navigateur peut les garder sans rien redemander."""
+    # Code d'accès : toutes les routes /api sauf l'état de santé et l'écran de saisie du code
+    if auth.needs_auth(request.url.path) and not auth.is_authorized(request):
+        return JSONResponse({"detail": "Code d'accès requis."}, status_code=401)
     resp = await call_next(request)
     if request.url.path.startswith("/assets/"):
         resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-    elif request.url.path in ("/", "/index.html", "/manifest.webmanifest"):
+    elif request.url.path in ("/", "/index.html", "/manifest.webmanifest", "/sw.js"):
         resp.headers["Cache-Control"] = "no-cache"
     return resp
 
 
+app.include_router(auth.router)
 app.include_router(stats.router)
 app.include_router(plans.router)
+app.include_router(coach.router)
 
 JSON_COLS = ("hr_zones_json", "power_curve_json", "splits_json", "track_json", "timeseries_json", "segments_json")
 LIST_COLS = (
-    "activity_id, name, sport_type, start_time_local, activity_date, distance_m, duration_s, "
+    "activity_id, name, sport_type, start_time_local, activity_date, distance_m, duration_s, moving_duration_s, "
     "elevation_gain_m, elevation_loss_m, avg_speed_ms, avg_hr, max_hr, aerobic_te, "
     "anaerobic_te, training_load, ground_contact_ms, gct_balance_left_pct, "
-    "vertical_oscillation_cm, stride_length_cm, avg_power_w, "
+    "vertical_oscillation_cm, stride_length_cm, avg_power_w, avg_cadence_spm, vertical_ratio_pct, "
     "notes IS NOT NULL OR ai_analysis IS NOT NULL AS has_notes, track_json"
 )
 
 
-AUTO_SYNC_MINUTES = 20  # synchro légère (Body Battery, disponibilité, nouvelles sorties)
-FULL_SYNC_MINUTES = 60  # synchro complète (prédictions, seuils, historique de forme)
-HISTORY_START = date(2025, 11, 1)  # début de l'historique à charger (date d'achat de la montre)
+AUTO_SYNC_MINUTES = 30  # synchro légère (Body Battery, disponibilité, nouvelles sorties)
+FULL_SYNC_MINUTES = 360  # synchro complète (prédictions, seuils, scores, historique de forme)
+QUIET_HOURS = (0, 6)  # pas de synchro légère la nuit : la montre n'envoie rien avant le réveil
+HISTORY_START = db.HISTORY_START
+# GARMIN_AUTO_SYNC : "on" (défaut, add-on Home Assistant), "startup" (une synchro au lancement puis plus
+# rien : copie d'essai sur le PC, pour ne pas doubler les appels à Garmin), "off".
+AUTO_SYNC = (os.getenv("GARMIN_AUTO_SYNC") or "on").strip().lower()
+ALERT_AFTER_FAILURES = 3  # synchros ratées de suite avant de prévenir dans Home Assistant
+
+
+def _record_sync_result(error: Optional[str]) -> int:
+    """Mémorise le résultat de la dernière tentative (affiché dans l'appli). Renvoie le nombre d'échecs de suite."""
+    from datetime import datetime
+
+    now = datetime.now().isoformat(timespec="seconds")
+    with db.connect() as conn:
+        fails = int(db.get_setting(conn, "sync_fail_count", "0") or 0)
+        if error:
+            fails += 1
+            db.set_setting(conn, "sync_last_error", error[:300])
+            db.set_setting(conn, "sync_last_error_at", now)
+        else:
+            fails = 0
+            db.set_setting(conn, "sync_last_ok_at", now)
+        db.set_setting(conn, "sync_fail_count", str(fails))
+        conn.commit()
+    return fails
+
+
+def _ha_notify(message: Optional[str]) -> None:
+    """Notification persistante dans Home Assistant (add-on seulement). `None` efface l'alerte."""
+    token = os.getenv("SUPERVISOR_TOKEN")
+    if not token:
+        return
+    import urllib.request
+
+    service = "create" if message else "dismiss"
+    body: dict = {"notification_id": "garmin_dashboard_sync"}
+    if message:
+        body.update({"title": "Garmin Dashboard", "message": message})
+    try:
+        req = urllib.request.Request(
+            f"http://supervisor/core/api/services/persistent_notification/{service}",
+            data=json.dumps(body).encode(),
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=10).close()
+    except Exception as exc:  # l'alerte est un plus : son échec ne doit rien casser
+        print(f"[auto-sync] notification Home Assistant impossible : {exc}")
+
+
+def _sync_done(error: Optional[str]) -> None:
+    fails = _record_sync_result(error)
+    if error and fails == ALERT_AFTER_FAILURES:
+        _ha_notify(f"La synchronisation Garmin échoue depuis {fails} essais. Dernière erreur : {error[:200]}")
+    elif not error:
+        _ha_notify(None)
 
 
 def _auto_sync_loop() -> None:
-    """Synchro complète au démarrage, puis une synchro légère toutes les 20 min et une complète toutes les heures."""
-    import threading
+    """Synchro complète au démarrage, puis une synchro légère toutes les 30 min et une complète toutes les 6 h."""
     import time
+    from datetime import datetime
 
     time.sleep(5)
     # Premier démarrage (base vide) : historique plus long, ex. add-on Home Assistant (GARMIN_INITIAL_DAYS)
@@ -99,19 +156,26 @@ def _auto_sync_loop() -> None:
                     sync.run_sync(days=days)
                     if backfill:
                         with db.connect() as conn:
-                            conn.execute(
-                                "INSERT INTO profile(key, value) VALUES('history_backfill', ?) "
-                                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                                (HISTORY_START.isoformat(),),
-                            )
+                            db.set_setting(conn, "history_backfill", HISTORY_START.isoformat())
                             conn.commit()
                         backfill = False
                     days = 30
                     last_full = time.time()
-                else:
+                    _sync_done(None)
+                elif not (QUIET_HOURS[0] <= datetime.now().hour < QUIET_HOURS[1]):
                     sync.run_light_sync()
+                    _sync_done(None)
         except Exception as exc:  # réseau, jeton expiré... : on réessaiera au prochain tour
             print(f"[auto-sync] {exc}")
+            _sync_done(str(exc))
+            try:
+                import garmin_client
+
+                garmin_client.reset_client()
+            except Exception:
+                pass
+        if AUTO_SYNC == "startup":
+            return
         time.sleep(AUTO_SYNC_MINUTES * 60)
 
 
@@ -120,7 +184,8 @@ def _startup() -> None:
     import threading
 
     db.init_db()
-    threading.Thread(target=_auto_sync_loop, daemon=True, name="auto-sync").start()
+    if AUTO_SYNC != "off":
+        threading.Thread(target=_auto_sync_loop, daemon=True, name="auto-sync").start()
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +205,7 @@ def pace(speed_ms: Optional[float]) -> Optional[str]:
     m, s = int(sec // 60), int(round(sec % 60))
     if s == 60:
         m, s = m + 1, 0
-    return f"{m}'{s:02d}"
+    return f"{m}:{s:02d}"
 
 
 def hms(seconds: Optional[float]) -> Optional[str]:
@@ -154,7 +219,7 @@ def hms(seconds: Optional[float]) -> Optional[str]:
 def speed_label(sport: Optional[str], speed_ms: Optional[float]) -> Optional[str]:
     if speed_ms is None:
         return None
-    return f"{pace(speed_ms)}/km" if is_foot(sport) else f"{speed_ms * 3.6:.1f} km/h"
+    return f"{pace(speed_ms)} /km" if is_foot(sport) else f"{speed_ms * 3.6:.1f} km/h"
 
 
 def row_to_activity(row, full: bool = False) -> dict:
@@ -201,19 +266,50 @@ def trigger_sync(
 ) -> dict:
     """Synchro incrémentale (bloquante : renvoie le résumé à la fin)."""
     try:
-        return sync.run_sync(days=days, force=force)
+        out = sync.run_sync(days=days, force=force)
     except RuntimeError as exc:
-        status = 409 if "déjà en cours" in str(exc) else 502
-        raise HTTPException(status, str(exc))
+        busy = "déjà en cours" in str(exc)
+        if not busy:
+            _sync_done(str(exc))
+        raise HTTPException(409 if busy else 502, str(exc))
+    _sync_done(None)
+    return out
 
 
 @app.get("/api/sync/status")
 def sync_status() -> dict:
+    """État de la synchro : dernière réussite, dernière erreur, heure de la dernière mesure de la montre."""
+    from datetime import datetime
+
     with db.connect() as conn:
         last = conn.execute("SELECT * FROM sync_log ORDER BY id DESC LIMIT 1").fetchone()
+        ok_at = db.get_setting(conn, "sync_last_ok_at") or (last["finished_at"] if last else None)
+        err = db.get_setting(conn, "sync_last_error")
+        err_at = db.get_setting(conn, "sync_last_error_at")
+        fails = int(db.get_setting(conn, "sync_fail_count", "0") or 0)
+        measured = db.get_setting(conn, "last_measure_at")
+    now = datetime.now()
+
+    def age_min(iso: Optional[str]) -> Optional[int]:
+        try:
+            return max(0, int((now - datetime.fromisoformat(iso)).total_seconds() // 60)) if iso else None
+        except ValueError:
+            return None
+
     return {
         "running": sync.SYNC_LOCK.locked(),
         "last": None if not last else {**dict(last), "summary_json": db.from_json(last["summary_json"])},
+        "now": now.isoformat(timespec="seconds"),
+        "auto": AUTO_SYNC,
+        "interval_min": AUTO_SYNC_MINUTES,
+        "last_ok_at": ok_at,
+        "last_ok_age_min": age_min(ok_at),
+        "failing": fails > 0,
+        "fail_count": fails,
+        "last_error": err if fails > 0 else None,
+        "last_error_at": err_at if fails > 0 else None,
+        "last_measure_at": measured,
+        "last_measure_age_min": age_min(measured),
     }
 
 
@@ -256,12 +352,38 @@ def thresholds() -> dict:
     """Derniers seuils connus de la montre (FC, allure, puissance de course, FTP vélo)."""
     with db.connect() as conn:
         row = conn.execute("SELECT * FROM thresholds ORDER BY date DESC LIMIT 1").fetchone()
-    if not row:
-        return {"available": False}
-    d = dict(row)
-    d["available"] = True
+        test = coach.threshold_test(conn)
+        source = db.get_setting(conn, "threshold_source", "garmin")
+    d = dict(row) if row else {}
+    d["available"] = bool(row) or bool(test)
+    # Valeurs de la montre, toujours renvoyées telles quelles
+    d["garmin_lt_speed_ms"] = d.get("lt_speed_ms")
+    d["garmin_lthr_bpm"] = d.get("lthr_bpm")
+    d["test"] = test
+    d["source"] = "test" if source == "test" and test else "garmin"
+    if d["source"] == "test":
+        # Seuil adopté depuis le test de terrain : c'est lui qui sert de repère partout dans l'appli
+        d["lt_speed_ms"] = test["speed_ms"]
+        d["lt_date"] = test["date"]
+        if test.get("lthr_bpm"):
+            d["lthr_bpm"] = test["lthr_bpm"]
     d["lt_pace"] = speed_label("running", d.get("lt_speed_ms"))
     return d
+
+
+class ThresholdSourceIn(BaseModel):
+    source: str
+
+
+@app.put("/api/thresholds/source")
+def set_threshold_source(body: ThresholdSourceIn) -> dict:
+    """Choisit le seuil de référence : celui de la montre (« garmin ») ou celui du test de terrain (« test »)."""
+    if body.source not in ("garmin", "test"):
+        raise HTTPException(400, "Source inconnue.")
+    with db.connect() as conn:
+        db.set_setting(conn, "threshold_source", body.source)
+        conn.commit()
+    return thresholds()
 
 
 @app.get("/api/activities/{activity_id}")
@@ -347,13 +469,16 @@ def fitness(days: int = Query(90, ge=7, le=730)) -> dict:
         tl = conn.execute(
             "SELECT date, body_battery_json FROM daily_health WHERE body_battery_json IS NOT NULL ORDER BY date DESC LIMIT 1"
         ).fetchone()
+        measured_at = db.get_setting(conn, "last_measure_at")
     bb_timeline = {"date": tl["date"], "points": json.loads(tl["body_battery_json"])} if tl else None
-    return {"days": days, "latest": latest, "series": rows, "bb_timeline": bb_timeline}
+    return {"days": days, "latest": latest, "series": rows, "bb_timeline": bb_timeline,
+            "measured_at": measured_at, "today": date.today().isoformat()}
 
 
 class ProfileIn(BaseModel):
     name: Optional[str] = None
     photo: Optional[str] = None  # image JPEG en data-URL (redimensionnée côté navigateur) ; "" = supprimer
+    coach_note: Optional[str] = None  # points personnels à surveiller, ajoutés au bilan copié pour analyse
 
 
 @app.get("/api/profile")
@@ -361,7 +486,7 @@ def get_profile() -> dict:
     with db.connect() as conn:
         rows = conn.execute("SELECT key, value FROM profile").fetchall()
     d = {r["key"]: r["value"] for r in rows}
-    return {"name": d.get("name") or "", "photo": d.get("photo") or ""}
+    return {"name": d.get("name") or "", "photo": d.get("photo") or "", "coach_note": d.get("coach_note") or ""}
 
 
 @app.put("/api/profile")
@@ -369,6 +494,8 @@ def save_profile(body: ProfileIn) -> dict:
     fields = body.model_dump(exclude_unset=True)
     if "name" in fields:
         fields["name"] = (fields["name"] or "").strip()[:40]
+    if "coach_note" in fields:
+        fields["coach_note"] = (fields["coach_note"] or "").strip()[:500]
     photo = fields.get("photo")
     if photo:
         if not photo.startswith("data:image/") or len(photo) > 400_000:
@@ -560,7 +687,10 @@ def export_prompt(activity_id: int) -> str:
         )
     if a.get("notes"):
         L.append(f"## Ressenti\n{a['notes']}")
-    L.append("Profil: valgus jambe, surveiller asymétrie G/D, GCT, charge. Objectif: 1er semi.")
+    with db.connect() as conn:
+        note = db.get_setting(conn, "coach_note")
+    if note:
+        L.append(f"Profil: {note}")
     return "\n".join(L)
 
 
@@ -568,7 +698,7 @@ def export_prompt(activity_id: int) -> str:
 def health() -> dict[str, Any]:
     with db.connect() as conn:
         n = conn.execute("SELECT COUNT(*) FROM activities").fetchone()[0]
-    return {"ok": True, "activities": n, "db": str(db.DB_PATH)}
+    return {"ok": True, "activities": n}
 
 
 # ---------------------------------------------------------------------------

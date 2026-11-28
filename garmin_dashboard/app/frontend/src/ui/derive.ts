@@ -85,6 +85,13 @@ export const GROUP_META: Record<Group, { label: string; color: string; bg: strin
 };
 export const GROUP_ORDER: Group[] = ["foot", "road", "mtb", "walk", "gym"];
 
+/** Temps actif d'une sortie : temps en mouvement (hors pauses), comme Strava ; durée totale en musculation et natation. */
+export function activeSecs(a: ActivityListItem): number {
+  const t = (a.sport_type ?? "").toLowerCase();
+  if (t.includes("strength") || t.includes("swim")) return a.duration_s ?? 0;
+  return a.moving_duration_s ?? a.duration_s ?? 0;
+}
+
 export interface Totals { secs: number; km: number; dplus: number; count: number }
 const zero = (): Totals => ({ secs: 0, km: 0, dplus: 0, count: 0 });
 
@@ -93,7 +100,7 @@ export function totals(acts: ActivityListItem[], from: string, to: string, group
   for (const a of acts) {
     if (a.activity_date < from || a.activity_date > to) continue;
     if (group && group !== "all" && groupOf(a.sport_type) !== group) continue;
-    t.secs += a.duration_s ?? 0;
+    t.secs += activeSecs(a);
     t.km += (a.distance_m ?? 0) / 1000;
     t.dplus += a.elevation_gain_m ?? 0;
     t.count += 1;
@@ -105,7 +112,7 @@ export function byGroup(acts: ActivityListItem[], from: string, to: string): Rec
   for (const a of acts) {
     if (a.activity_date < from || a.activity_date > to) continue;
     const t = out[groupOf(a.sport_type)];
-    t.secs += a.duration_s ?? 0;
+    t.secs += activeSecs(a);
     t.km += (a.distance_m ?? 0) / 1000;
     t.dplus += a.elevation_gain_m ?? 0;
     t.count += 1;

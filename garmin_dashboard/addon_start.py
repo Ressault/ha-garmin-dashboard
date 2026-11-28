@@ -10,6 +10,7 @@ opts = json.loads(OPTIONS.read_text(encoding="utf-8")) if OPTIONS.exists() else 
 
 os.environ["GARMIN_EMAIL"] = (opts.get("garmin_email") or "").strip()
 os.environ["GARMIN_PASSWORD"] = opts.get("garmin_password") or ""
+os.environ["ACCESS_CODE"] = (opts.get("access_code") or "").strip()
 os.environ["GARMIN_INITIAL_DAYS"] = str(opts.get("initial_sync_days") or 365)
 
 # Jeton Garmin collé dans les options : copié une seule fois dans /data/garth (le client Garmin
@@ -31,6 +32,10 @@ if raw:
             target.chmod(0o600)
             marker.write_text(digest)
             print("[addon] Jeton Garmin importé.", flush=True)
+
+if not os.environ["ACCESS_CODE"]:
+    print("[addon] Aucun code d'accès : l'interface est ouverte à tout appareil du réseau. "
+          "Choisis-en un dans la configuration de l'add-on (champ access_code).", flush=True)
 
 if not raw and not (token_dir / "garmin_tokens.json").exists() and not os.environ["GARMIN_EMAIL"]:
     print("[addon] Aucun jeton ni identifiant Garmin : renseigne-les dans la configuration de l'add-on.", flush=True)

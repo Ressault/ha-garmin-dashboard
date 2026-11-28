@@ -3,7 +3,9 @@ import { ChevronLeft } from "lucide-react";
 
 import { ActivityChart, type ActivityChartHandle } from "@/components/ActivityChart";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
-import { QueryError, Segmented, SportTile, Value } from "@/components/common";
+import { Segmented, SportTile, Value } from "@/components/common";
+import { FoldCard } from "@/components/FoldCard";
+import { LoadError } from "@/ui/status";
 import { StravaPanels } from "@/components/StravaPanels";
 import { RunningDynamics } from "@/components/RunningDynamics";
 import { TrackMap, type MapMode, type TrackMapHandle } from "@/components/TrackMap";
@@ -105,7 +107,7 @@ function SplitsTable({ a }: { a: ActivityDetail }) {
             const cad = s.cadence_spm ? (s.cadence_spm < 110 && foot ? s.cadence_spm * 2 : s.cadence_spm) : null;
             return (
               <tr key={s.n} className="hover:bg-foreground/[0.03]">
-                <td className="px-2 py-2.5 font-medium">{s.n}{(s.distance_m ?? 1000) < 500 && <span className="text-muted-foreground ml-1 text-[12px] font-normal">{nf(s.distance_m ?? 0)} m</span>}</td>
+                <td className="px-2 py-2.5 font-medium whitespace-nowrap">{s.n}{(s.distance_m ?? 1000) < 500 && <span className="text-muted-foreground text-[12px] font-normal"> · {nf(s.distance_m ?? 0)} m</span>}</td>
                 <td className={`px-2 py-2.5 text-right font-semibold ${best ? "text-[color:var(--ok)]" : ""}`}>
                   {sp.value} <span className="text-muted-foreground text-xs font-normal">{sp.unit}</span>
                 </td>
@@ -148,7 +150,7 @@ export default function ActivityDetailView({ id }: { id: number }) {
         <ChevronLeft className="size-7" strokeWidth={2.4} /> Retour
       </a>
 
-      {q.error && !a && <QueryError error={q.error} onRetry={q.reload} />}
+      {q.error && !a && <LoadError error={q.error} onRetry={q.reload} />}
 
       {!a && !q.error && (
         <div className="grid grid-cols-1 gap-5">
@@ -210,25 +212,15 @@ export default function ActivityDetailView({ id }: { id: number }) {
               <CardContent>{a.hr_zones?.length ? <ZoneBars zones={a.hr_zones} /> : <p className="text-muted-foreground text-sm">Pas de zones pour cette sortie.</p>}</CardContent>
             </Card>
             {foot && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Dynamiques de course</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <RunningDynamics a={a} prep={prep} />
-                </CardContent>
-              </Card>
+              <FoldCard title="Dynamiques de course">
+                <RunningDynamics a={a} prep={prep} />
+              </FoldCard>
             )}
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Tours</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SplitsTable a={a} />
-            </CardContent>
-          </Card>
+          <FoldCard title={`Tours${a.splits?.length ? ` (${a.splits.length})` : ""}`}>
+            <SplitsTable a={a} />
+          </FoldCard>
 
           <Card>
             <CardHeader>

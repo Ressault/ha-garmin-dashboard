@@ -133,7 +133,7 @@ export const ActivityChart = forwardRef<ActivityChartHandle, { prep: Prepared; o
             const x = data.x[k];
             let html = tipTitle(km ? `${nf(x, 2)} km` : `${nf(x, 1)} min`);
             if (hasAlt && data.alt[k] != null) html += tipRow(C.gray, "Altitude", `${nf(data.alt[k])} m`);
-            if (hasHr && data.hr[k] != null) html += tipRow(C.red, "FC", `${nf(data.hr[k])} bpm`);
+            if (hasHr && data.hr[k] != null) html += tipRow(C.red, "FC", `${nf(data.hr[k])} BPM`);
             if (showPace && data.pace[k] != null) html += tipRow(C.blue, "Allure", `${fmtPaceSec(data.pace[k])} /km`);
             if (!showPace && data.spd[k] != null) html += tipRow(C.blue, "Vitesse", `${nf((data.spd[k] as number) * 3.6, 1)} km/h`);
             return html;

@@ -122,7 +122,7 @@ export function hrInsight(a: ActivityDetail, p: Prepared | null, th?: Thresholds
   const avg = a.avg_hr ?? avgOf(p?.hr ?? []);
   const max = a.max_hr ?? maxOf(p?.hr ?? []);
   if (!avg) return null;
-  let s = `FC moyenne ${nf(avg)} bpm${max ? `, pic à ${nf(max)} bpm` : ""}`;
+  let s = `FC moyenne ${nf(avg)} BPM${max ? `, pic à ${nf(max)} BPM` : ""}`;
   const z = a.hr_zones?.filter((x) => x.secs) ?? [];
   const tot = z.reduce((t, x) => t + (x.secs ?? 0), 0);
   if (tot > 0) {
@@ -130,7 +130,7 @@ export function hrInsight(a: ActivityDetail, p: Prepared | null, th?: Thresholds
     const pct = Math.round(((top.secs ?? 0) / tot) * 100);
     s += `, majorité en zone ${ZONE_META[top.zone - 1]?.name ?? `Z${top.zone}`} (${pct} %)`;
   }
-  if (th?.lthr_bpm) s += `. FC moyenne à ${Math.round((avg / th.lthr_bpm) * 100)} % de ta FC seuil (${nf(th.lthr_bpm)} bpm)`;
+  if (th?.lthr_bpm) s += `. FC moyenne à ${Math.round((avg / th.lthr_bpm) * 100)} % de ta FC seuil (${nf(th.lthr_bpm)} BPM)`;
   const t = p ? trend(p.hr, 0.04) : null;
   if (t === "up") s += ". La FC monte en fin de sortie";
   return s + ".";

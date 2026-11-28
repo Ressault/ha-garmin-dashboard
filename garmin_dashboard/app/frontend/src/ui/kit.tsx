@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useDataVersion, useNet } from "@/hooks/useQuery";
 import { cn } from "@/lib/utils";
 import { useScrubNav } from "./scrub";
 
@@ -21,9 +22,27 @@ export const TINT = {
 type Tint = keyof typeof TINT;
 const tintStyle = (t?: Tint): CSSProperties | undefined => (t ? ({ "--tint": TINT[t] } as CSSProperties) : undefined);
 
+/** Bandeau discret en haut de page : la dernière tentative a échoué, ce qui est affiché date d'avant. */
+export function NetBanner() {
+  const net = useNet();
+  const { bump } = useDataVersion();
+  if (!net.error || net.locked) return null;
+  return (
+    <div role="status" className="hk-netbanner mb-3 flex items-center gap-3 rounded-2xl bg-[var(--warn-bg)] px-3.5 py-2.5 text-[14px] leading-snug text-[var(--warn-text)]">
+      <span className="min-w-0 flex-1">
+        <b className="font-semibold">Hors ligne.</b> Les chiffres affichés datent du dernier chargement réussi.
+      </span>
+      <button type="button" onClick={bump} className="hk-press h-11 shrink-0 rounded-full bg-[var(--card)] px-4 text-[14px] font-semibold text-foreground">
+        Réessayer
+      </button>
+    </div>
+  );
+}
+
 export function Page({ tint, children, className }: { tint?: Tint; children: ReactNode; className?: string }) {
   return (
     <div className={cn("hk-page -mx-4 min-h-screen px-4 pt-[max(env(safe-area-inset-top),20px)] pb-32 sm:-mx-6 sm:px-6 md:mx-0 md:rounded-[30px] md:px-8 md:pt-8 md:pb-14", className)} style={tintStyle(tint)}>
+      <NetBanner />
       {children}
     </div>
   );
@@ -146,57 +165,13 @@ export function Chip({ href, icon, label, value, current }: { href: string; icon
 // et le défilement de la rangée précédente (même bandeau = même libellé) pour les faire glisser vers la pilule active.
 let last: { label: string; idx: number; scroll: number; t: number } | null = null;
 
-/** Carte de réfraction d'un rectangle arrondi (rayon R) : au bord, le fond est lu « replié » vers l'intérieur */
-function roundedMap(w: number, h: number, R: number, bezel: number): string {
-  const k = 2, c = document.createElement("canvas");
-  c.width = Math.round(w * k); c.height = Math.round(h * k);
-  const ctx = c.getContext("2d");
-  if (!ctx) return "";
-  const img = ctx.createImageData(c.width, c.height);
-  const bx = w / 2 - R, by = h / 2 - R;
-  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
-    const px = (x + 0.5) / k - w / 2, py = (y + 0.5) / k - h / 2;
-    const qx = Math.abs(px) - bx, qy = Math.abs(py) - by;
-    const ox = Math.max(qx, 0), oy = Math.max(qy, 0), ol = Math.hypot(ox, oy);
-    const d = -(ol + Math.min(Math.max(qx, qy), 0) - R); // profondeur sous le bord
-    let nx = 0, ny = 0;
-    if (ol > 0) { nx = Math.sign(px) * ox / ol; ny = Math.sign(py) * oy / ol; } else if (qx > qy) nx = Math.sign(px); else ny = Math.sign(py);
-    let Rv = 128, Gv = 128;
-    if (d >= 0 && d < bezel) { const m = Math.pow(1 - d / bezel, 2.2); Rv = 128 - nx * m * 127; Gv = 128 - ny * m * 127; }
-    const i = (y * c.width + x) * 4;
-    img.data[i] = Rv; img.data[i + 1] = Gv; img.data[i + 2] = 128; img.data[i + 3] = 255;
-  }
-  ctx.putImageData(img, 0, 0);
-  return c.toDataURL("image/png");
-}
-const SVGNS = "http://www.w3.org/2000/svg";
-/** Filtre SVG de verre (même chaîne que la barre du bas : déplacement R/V/B, flou, saturation) */
-function glassFilter(id: string, w: number, h: number, map: string, scale: number, blur: number): SVGFilterElement {
-  const f = document.createElementNS(SVGNS, "filter");
-  const set = (el: Element, a: Record<string, string | number>) => { for (const [n, v] of Object.entries(a)) el.setAttribute(n, String(v)); return el; };
-  set(f, { id, x: 0, y: 0, width: w, height: h, filterUnits: "userSpaceOnUse", primitiveUnits: "userSpaceOnUse", "color-interpolation-filters": "sRGB" });
-  const ch = (r: number, g: number, b: number) => `${r} 0 0 0 0  0 ${g} 0 0 0  0 0 ${b} 0 0  0 0 0 1 0`;
-  const add = (tag: string, a: Record<string, string | number>) => f.appendChild(set(document.createElementNS(SVGNS, tag), a));
-  add("feImage", { href: map, x: 0, y: 0, width: w, height: h, preserveAspectRatio: "none", result: "map" });
-  ([["r", 0.9, ch(1, 0, 0)], ["g", 1, ch(0, 1, 0)], ["b", 1.12, ch(0, 0, 1)]] as const).forEach(([n, s, m]) => {
-    add("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * s, xChannelSelector: "R", yChannelSelector: "G", result: "d" + n });
-    add("feColorMatrix", { in: "d" + n, type: "matrix", values: m, result: n });
-  });
-  add("feBlend", { in: "r", in2: "g", mode: "screen", result: "rg" });
-  add("feBlend", { in: "rg", in2: "b", mode: "screen", result: "rgb" });
-  add("feGaussianBlur", { in: "rgb", stdDeviation: blur, result: "bl" });
-  add("feColorMatrix", { in: "bl", type: "saturate", values: 1.8 });
-  return f;
-}
-
 export function ChipRow({ children, label }: { children: ReactNode; label: string }) {
   const ref = useRef<HTMLElement>(null);
   const track = useRef<HTMLDivElement>(null);
-  const defs = useRef<SVGSVGElement>(null);
   useScrubNav(ref, "a.hk-chip");
   useLayoutEffect(() => {
-    const row = ref.current, tr = track.current, svg = defs.current;
-    if (!row || !tr || !svg) return;
+    const row = ref.current, tr = track.current;
+    if (!row || !tr) return;
     const chips = [...row.querySelectorAll<HTMLElement>("a.hk-chip")];
     const idx = chips.findIndex((c) => c.getAttribute("aria-current") === "page");
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -210,19 +185,10 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
       tr.appendChild(s);
       return s;
     });
-    const uid = Math.random().toString(36).slice(2, 7);
-    const sizes: string[] = [];
     const place = () => {
       chips.forEach((c, i) => {
-        const w = c.offsetWidth, h = c.offsetHeight, b = bodies[i];
-        b.style.transform = `translateX(${c.offsetLeft}px)`; b.style.width = `${w}px`;
-        if (w && sizes[i] !== `${w}x${h}`) { // filtre de réfraction à la taille exacte de la pilule
-          sizes[i] = `${w}x${h}`;
-          const id = `hk-pgf-${uid}-${i}`;
-          svg.querySelector(`#${id}`)?.remove();
-          svg.appendChild(glassFilter(id, w, h, roundedMap(w, h, 22, 14), 22, 5));
-          b.style.setProperty("--pgf", `url(#${id})`);
-        }
+        const b = bodies[i];
+        b.style.transform = `translateX(${c.offsetLeft}px)`; b.style.width = `${c.offsetWidth}px`;
       });
       tr.style.width = `${row.scrollWidth}px`;
       tr.style.transform = `translateX(${-row.scrollLeft}px)`;
@@ -266,13 +232,12 @@ export function ChipRow({ children, label }: { children: ReactNode; label: strin
     ro.observe(row); chips.forEach((c) => ro.observe(c)); // une pilule qui s'élargit à l'arrivée des données recale son verre
     return () => {
       cancelAnimationFrame(id); row.removeEventListener("scroll", onScroll); row.removeEventListener("pointerdown", press); ro.disconnect();
-      bodies.forEach((b) => b.remove()); svg.replaceChildren();
+      bodies.forEach((b) => b.remove());
     };
   }, []);
   return (
     <>
       <div aria-hidden className="hk-rail -mx-4 sm:-mx-6">
-        <svg ref={defs} width="0" height="0" style={{ position: "absolute" }} />
         <div ref={track} className="hk-rail-track" />
       </div>
       <nav ref={ref} aria-label={label} data-fixed className="hk-scroll hk-carousel -mx-4 -mb-2.5 px-4 pb-3 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:px-0">

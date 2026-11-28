@@ -132,6 +132,48 @@ def delete_plan(plan_id: int) -> dict:
     return {"deleted": plan_id}
 
 
+def match_sessions(sessions: list, by_day: dict, today: date) -> list:
+    """Rapproche chaque séance des sorties à pied réellement courues.
+
+    1. Les sorties du jour prévu comptent d'abord.
+    2. Une séance sans sortie ce jour-là peut être validée par une sortie de la veille ou du lendemain,
+       si ce jour voisin n'avait pas de séance prévue et que la distance y est (au moins 80 %).
+       `shift_days` vaut alors -1 ou +1 : l'écran indique que la séance a été décalée.
+    """
+    planned_days = {s["date"] for s in sessions if (s.get("km") or 0) > 0}
+    claimed: set = set()
+    out = []
+    for s in sessions:
+        day = by_day.get(s["date"], [])
+        km = s.get("km")
+        d = date.fromisoformat(s["date"])
+        shift = 0
+        if km is not None and km > 0 and not day and d <= today:
+            for delta in (1, -1):
+                other = (d + timedelta(days=delta)).isoformat()
+                cand = by_day.get(other, [])
+                if not cand or other in planned_days or other in claimed:
+                    continue
+                if sum((a["distance_m"] or 0) for a in cand) / 1000 >= km * 0.8:
+                    day, shift = cand, delta
+                    claimed.add(other)
+                    break
+        done_km = round(sum((a["distance_m"] or 0) for a in day) / 1000, 2)
+        if km is None or km <= 0:
+            status = "info"
+        elif day:
+            status = "done" if done_km >= km * 0.8 else "partial"
+        elif d < today:
+            status = "missed"
+        elif d == today:
+            status = "today"
+        else:
+            status = "upcoming"
+        out.append({**s, "status": status, "done_km": done_km if day else None,
+                    "activity_id": day[0]["activity_id"] if day else None, "shift_days": shift})
+    return out
+
+
 @router.get("/{plan_id}")
 def get_plan(plan_id: int) -> dict:
     today = date.today()
@@ -153,23 +195,7 @@ def get_plan(plan_id: int) -> dict:
     for a in runs:
         by_day.setdefault(a["activity_date"], []).append(a)
 
-    out = []
-    for s in data["sessions"]:
-        day = by_day.get(s["date"], [])
-        done_km = round(sum((a["distance_m"] or 0) for a in day) / 1000, 2)
-        km = s.get("km")
-        d = date.fromisoformat(s["date"])
-        if km is None or km <= 0:
-            status = "info"
-        elif day:
-            status = "done" if done_km >= km * 0.8 else "partial"
-        elif d < today:
-            status = "missed"
-        elif d == today:
-            status = "today"
-        else:
-            status = "upcoming"
-        out.append({**s, "status": status, "done_km": done_km if day else None, "activity_id": day[0]["activity_id"] if day else None})
+    out = match_sessions(data["sessions"], by_day, today)
 
     # volume prévu / réalisé par semaine (toutes les sorties à pied comptent, prévues ou non)
     weeks = []
@@ -183,4 +209,18 @@ def get_plan(plan_id: int) -> dict:
         weeks.append({"week": wk, "planned_km": round(planned, 1), "done_km": round(actual, 1)})
         w += timedelta(days=7)
 
-    return {**_summary(row, data), "today": today.isoformat(), "sessions_detail": out, "weeks": weeks}
+    # Courses objectif qui tombent pendant le programme, avec ce que le programme prévoit ce jour-là
+    with db.connect() as conn:
+        try:
+            all_races = sorted(json.loads(db.get_setting(conn, "races") or "[]"), key=lambda r: r["date"])
+        except (ValueError, KeyError, TypeError):
+            all_races = []
+    races = []
+    for r in all_races:
+        if not (row["start_date"] <= r["date"] <= row["end_date"]):
+            continue
+        same = next((s for s in data["sessions"] if s["date"] == r["date"]), None)
+        in_plan = bool(same) and (same.get("type") == "course" or abs((same.get("km") or 0) - (r.get("km") or -99)) < 1.5)
+        races.append({**r, "in_plan": in_plan, "planned_title": same["title"] if same else None})
+
+    return {**_summary(row, data), "today": today.isoformat(), "sessions_detail": out, "weeks": weeks, "races": races}

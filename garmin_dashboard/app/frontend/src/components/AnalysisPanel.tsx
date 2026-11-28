@@ -65,6 +65,24 @@ function Editor({
   );
 }
 
+/** Copie dans le presse-papiers ; repli par sélection de texte quand la page n'est pas en HTTPS (adresse locale). */
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  const ok = document.execCommand("copy");
+  ta.remove();
+  if (!ok) throw new Error("Copie refusée par le navigateur.");
+}
+
 export function AnalysisPanel({ a }: { a: ActivityDetail }) {
   const { bump } = useDataVersion();
   const [notes, setNotes] = useState(a.notes ?? "");
@@ -84,7 +102,7 @@ export function AnalysisPanel({ a }: { a: ActivityDetail }) {
     setCopying(true);
     try {
       const md = await api.exportPrompt(a.activity_id);
-      await navigator.clipboard.writeText(md);
+      await copyText(md);
       setCopied(true);
       setTimeout(() => setCopied(false), 2200);
       toast.success("Bilan copié", { description: `≈ ${nf(Math.round(md.length / 3.6))} jetons · colle-le dans Claude.` });
@@ -144,7 +162,7 @@ export function AnalysisPanel({ a }: { a: ActivityDetail }) {
             value={notes}
             onChange={setNotes}
             rows={5}
-            placeholder="Mes sensations, la jambe, le valgus, la météo, le terrain…"
+            placeholder="Mes sensations, la météo, le terrain…"
             onSave={() => save("notes")}
             saving={saving === "notes"}
             dirty={notes !== saved.notes}

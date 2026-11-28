@@ -376,12 +376,16 @@ EFFORTS = {
 MAX_SPEED_MS = {"foot": 6.5, "bike": 22.0}
 
 
-def best_time(ts: list, dist: float) -> Optional[float]:
+def best_time(ts: list, dist: float, max_speed: Optional[float] = None) -> Optional[float]:
     """Plus petit temps pour couvrir `dist` mètres, fenêtre glissante interpolée.
 
     La courbe est échantillonnée (quelques centaines de points) : on teste les fenêtres qui
     commencent sur un point puis celles qui finissent sur un point, pour ne pas rater le meilleur
     départ entre deux échantillons.
+
+    Avec `max_speed` (m/s), toute fenêtre qui traverse un passage durablement plus rapide que cette
+    vitesse est écartée : un saut du GPS ou une montre restée allumée en voiture ne doit pas produire un record,
+    même noyé dans une distance plus longue dont la moyenne reste plausible.
     """
     pts = [(p.get("d"), p.get("t")) for p in ts]
     pts = [(a, b) for a, b in pts if a is not None and b is not None]
@@ -391,6 +395,25 @@ def best_time(ts: list, dist: float) -> Optional[float]:
     tt = [b for _, b in pts]
     n = len(pts)
     best = None
+
+    # Tronçon k = points k → k+1. Un tronçon isolé et court au-delà de la vitesse maximale est un
+    # simple à-coup du GPS (toléré) ; deux tronçons de suite, ou un seul de plus de 30 m, sont un
+    # vrai passage impossible : bad[k] en compte le nombre parmi les k premiers tronçons.
+    fast = [False] * max(n - 1, 0)
+    if max_speed is not None:
+        for k in range(n - 1):
+            dd, dt = ds[k + 1] - ds[k], tt[k + 1] - tt[k]
+            fast[k] = dd > 0 and (dt <= 0 or dd / dt > max_speed)
+    bad = [0] * n
+    for k in range(n - 1):
+        sustained = fast[k] and (
+            ds[k + 1] - ds[k] > 30 or (k > 0 and fast[k - 1]) or (k + 1 < n - 1 and fast[k + 1])
+        )
+        bad[k + 1] = bad[k] + (1 if sustained else 0)
+
+    def clean(a: int, b: int) -> bool:
+        # aucun tronçon impossible entre les points a et b
+        return bad[max(a, min(b, n - 1))] - bad[max(0, min(a, n - 1))] == 0
 
     def interp(k: int, target: float) -> float:
         # temps auquel la distance cumulée vaut `target`, entre les points k-1 et k
@@ -404,14 +427,20 @@ def best_time(ts: list, dist: float) -> Optional[float]:
         target = ds[i] + dist
         if target > ds[-1]:
             break
-        el = interp(bisect_left(ds, target, i), target) - tt[i]
+        k = bisect_left(ds, target, i)
+        if not clean(i, k):
+            continue
+        el = interp(k, target) - tt[i]
         if el > 0 and (best is None or el < best):
             best = el
     for j in range(n - 1, -1, -1):  # arrivée sur un point
         target = ds[j] - dist
         if target < ds[0]:
             break
-        el = tt[j] - interp(bisect_left(ds, target, 0, j + 1), target)
+        k = bisect_left(ds, target, 0, j + 1)
+        if not clean(max(k - 1, 0), j):
+            continue
+        el = tt[j] - interp(k, target)
         if el > 0 and (best is None or el < best):
             best = el
     return best
@@ -431,8 +460,9 @@ def _activity_efforts(row, kind: str) -> dict:
         for dist, label in EFFORTS[kind]:
             if (row["distance_m"] or 0) < dist * 0.98:
                 continue
-            t = best_time(ts, dist)
-            # Un trou ou un saut du GPS donne des « records » impossibles (400 m en 48 s) : on les écarte.
+            # Un trou ou un saut du GPS donne des « records » impossibles (400 m en 48 s) : toute
+            # fenêtre qui contient un tronçon au-delà de la vitesse maximale est écartée.
+            t = best_time(ts, dist, MAX_SPEED_MS[kind])
             if t and dist / t <= MAX_SPEED_MS[kind]:
                 out[label] = round(t, 1)
     if len(_EFFORT_CACHE) > 4000:

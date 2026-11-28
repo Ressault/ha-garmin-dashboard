@@ -34,6 +34,9 @@ ATL_DAYS = 7
 WARMUP_DAYS = 90
 MAX_CHART_POINTS = 600
 MAX_TRACK_POINTS = 800
+DETAIL_MAX_TRIES = 5          # essais de détail d'une sortie avant d'abandonner (activité sans données)
+HEALTH_DETAIL_VERSION = 1     # à augmenter quand une nouvelle mesure détaillée est ajoutée aux jours passés
+HEALTH_BACKFILL_PER_SYNC = 20  # jours passés complétés par synchro complète (2 appels chacun)
 
 SYNC_LOCK = threading.Lock()
 
@@ -149,6 +152,40 @@ def activity_summary_row(act: dict) -> dict:
     }
 
 
+SUMMARY_HASH_FIELDS = (
+    "sport_type", "start_time_local", "distance_m", "duration_s", "moving_duration_s", "elevation_gain_m",
+    "avg_hr", "max_hr", "aerobic_te", "training_load", "avg_power_w",
+)
+
+
+def summary_hash(row: dict) -> str:
+    """Empreinte des champs du résumé qui, s'ils changent, rendent le détail stocké périmé.
+
+    Le nom n'en fait pas partie : il est mis à jour par le résumé lui-même à chaque synchro."""
+    import hashlib
+
+    return hashlib.sha1("|".join(str(row.get(k)) for k in SUMMARY_HASH_FIELDS).encode()).hexdigest()[:16]
+
+
+def upsert_summary(conn, act: dict) -> Optional[int]:
+    """Enregistre le résumé d'une sortie ; si Garmin l'a modifiée depuis, son détail sera retéléchargé."""
+    row = activity_summary_row(act)
+    aid = row["activity_id"]
+    if not aid:
+        return None
+    h = summary_hash(row)
+    old = conn.execute("SELECT summary_hash FROM activities WHERE activity_id = ?", (aid,)).fetchone()
+    db.upsert(conn, "activities", "activity_id", row, keep_existing=("notes", "ai_analysis"))
+    if old is None or old["summary_hash"] is None:
+        conn.execute("UPDATE activities SET summary_hash = ? WHERE activity_id = ?", (h, aid))
+    elif old["summary_hash"] != h:
+        conn.execute(
+            "UPDATE activities SET summary_hash = ?, details_synced = 0, detail_tries = 0 WHERE activity_id = ?",
+            (h, aid),
+        )
+    return aid
+
+
 def activity_detail_row(client, activity_id: int, errors: list) -> dict:
     row: dict[str, Any] = {"activity_id": activity_id}
     tag = f"activité {activity_id}"
@@ -223,8 +260,26 @@ def activity_detail_row(client, activity_id: int, errors: list) -> dict:
     elif row.get("timeseries_json"):
         row["power_curve_json"] = db.to_json(power_curve_from_series(row["timeseries_json"]))
 
-    row["details_synced"] = 1
+    # « Détaillée » seulement si l'essentiel a répondu : sinon la sortie sera retentée à la synchro suivante.
+    row["_ok"] = bool(raw) and details is not None
     return row
+
+
+def store_detail(conn, row: dict) -> bool:
+    """Écrit le détail d'une sortie ; ne la marque « détaillée » que si les appels essentiels ont réussi."""
+    ok = row.pop("_ok", True)
+    aid = row["activity_id"]
+    if ok:
+        row["details_synced"] = 1
+    db.upsert(conn, "activities", "activity_id", row, keep_existing=("notes", "ai_analysis"))
+    if not ok:
+        conn.execute(
+            "UPDATE activities SET detail_tries = COALESCE(detail_tries, 0) + 1, "
+            "details_synced = CASE WHEN COALESCE(detail_tries, 0) + 1 >= ? THEN 1 ELSE details_synced END "
+            "WHERE activity_id = ?",
+            (DETAIL_MAX_TRIES, aid),
+        )
+    return ok
 
 
 FOOT_HINTS = ("run", "walk", "hik")
@@ -578,33 +633,42 @@ def heart_details(hr: Optional[dict]) -> Optional[dict]:
     }
 
 
-def daily_health_row(client, day: str, errors: list) -> dict:
+def daily_health_row(client, day: str, errors: list, skip_night: bool = False, out: Optional[dict] = None) -> dict:
+    """Mesures de santé d'un jour.
+
+    `skip_night` : la nuit (sommeil, VFC) est déjà en base et ne change plus dans la journée, on ne la
+    redemande pas. `out` reçoit le résumé du jour de Garmin (`stats`) pour éviter un second appel.
+    Le jour n'est marqué « synchronisé » que si aucun appel n'a échoué."""
     row: dict[str, Any] = {"date": day}
+    n_errors = len(errors)
 
-    sleep = safe(f"{day} sleep", errors, client.get_sleep_data, day) or {}
-    dto = sleep.get("dailySleepDTO") or {}
-    scores = dto.get("sleepScores") or {}
-    row.update(
-        {
-            "sleep_score": num((scores.get("overall") or {}).get("value"), 0),
-            "sleep_duration_s": num(dto.get("sleepTimeSeconds"), 0),
-            "deep_sleep_s": num(dto.get("deepSleepSeconds"), 0),
-            "rem_sleep_s": num(dto.get("remSleepSeconds"), 0),
-        }
-    )
+    if not skip_night:
+        sleep = safe(f"{day} sleep", errors, client.get_sleep_data, day) or {}
+        dto = sleep.get("dailySleepDTO") or {}
+        scores = dto.get("sleepScores") or {}
+        row.update(
+            {
+                "sleep_score": num((scores.get("overall") or {}).get("value"), 0),
+                "sleep_duration_s": num(dto.get("sleepTimeSeconds"), 0),
+                "deep_sleep_s": num(dto.get("deepSleepSeconds"), 0),
+                "rem_sleep_s": num(dto.get("remSleepSeconds"), 0),
+            }
+        )
 
-    row["sleep_json"] = db.to_json(sleep_details(sleep))
+        row["sleep_json"] = db.to_json(sleep_details(sleep))
 
-    hrv = (safe(f"{day} hrv", errors, client.get_hrv_data, day) or {}).get("hrvSummary") or {}
-    row.update(
-        {
-            "hrv_last_night_ms": num(hrv.get("lastNightAvg"), 0),
-            "hrv_weekly_avg_ms": num(hrv.get("weeklyAvg"), 0),
-            "hrv_status": hrv.get("status"),
-        }
-    )
+        hrv = (safe(f"{day} hrv", errors, client.get_hrv_data, day) or {}).get("hrvSummary") or {}
+        row.update(
+            {
+                "hrv_last_night_ms": num(hrv.get("lastNightAvg"), 0),
+                "hrv_weekly_avg_ms": num(hrv.get("weeklyAvg"), 0),
+                "hrv_status": hrv.get("status"),
+            }
+        )
 
     stats = safe(f"{day} stats", errors, client.get_stats, day) or {}
+    if out is not None:
+        out["stats"] = stats
     row.update(
         {
             "resting_hr": num(stats.get("restingHeartRate"), 0),
@@ -656,8 +720,43 @@ def daily_health_row(client, day: str, errors: list) -> dict:
             }
         )
 
-    row["health_synced"] = 1
+    if len(errors) == n_errors:
+        row["health_synced"] = 1
+        if not skip_night:
+            row["detail_v"] = HEALTH_DETAIL_VERSION
     return row
+
+
+def backfill_health_details(client, conn, errors: list, log=print, limit: int = HEALTH_BACKFILL_PER_SYNC) -> int:
+    """Complète les jours passés auxquels il manque les mesures détaillées (phases de sommeil, FC horaire).
+
+    Les jours les plus récents d'abord, `limit` jours par synchro complète pour ménager l'API Garmin.
+    Un jour est marqué à la version courante même s'il n'y a rien à récupérer (montre non portée),
+    pour ne pas être redemandé indéfiniment ; en cas d'erreur réseau il sera retenté."""
+    rows = conn.execute(
+        "SELECT date FROM daily_health WHERE date >= ? AND date < ? AND COALESCE(detail_v, 0) < ? "
+        "AND (sleep_json IS NULL OR heart_json IS NULL) ORDER BY date DESC LIMIT ?",
+        (db.HISTORY_START.isoformat(), (date.today() - timedelta(days=2)).isoformat(), HEALTH_DETAIL_VERSION, limit),
+    ).fetchall()
+    if not rows:
+        return 0
+    log(f"      mesures détaillées : {len(rows)} jour(s) à compléter...")
+    n = 0
+    for r in rows:
+        day = r["date"]
+        n_errors = len(errors)
+        sleep = safe(f"{day} sleep", errors, client.get_sleep_data, day)
+        heart = safe(f"{day} heart", errors, client.get_heart_rates, day)
+        if len(errors) != n_errors:
+            continue
+        conn.execute(
+            "UPDATE daily_health SET sleep_json = COALESCE(?, sleep_json), heart_json = COALESCE(?, heart_json), "
+            "detail_v = ? WHERE date = ?",
+            (db.to_json(sleep_details(sleep or {})), db.to_json(heart_details(heart)), HEALTH_DETAIL_VERSION, day),
+        )
+        conn.commit()
+        n += 1
+    return n
 
 
 # ---------------------------------------------------------------------------
@@ -665,10 +764,15 @@ def daily_health_row(client, day: str, errors: list) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def sync_fitness_scores(client, conn, errors: list) -> int:
-    """Relève les scores du jour ; chaque synchro ajoute un point à l'historique."""
+def sync_fitness_scores(client, conn, errors: list, light: bool = False, stats: Optional[dict] = None) -> int:
+    """Relève les scores du jour ; chaque synchro ajoute un point à l'historique.
+
+    `light` : seulement la Body Battery (les autres scores bougent au plus une fois par jour,
+    la synchro complète s'en charge). `stats` : résumé du jour déjà téléchargé, s'il l'est."""
     day = date.today().isoformat()
     row: dict[str, Any] = {"date": day}
+    if light:
+        return _sync_body_battery(client, conn, errors, day, row, stats)
 
     mm = safe("max_metrics", errors, client.get_max_metrics, day)
     row["vo2max"] = num(deep_find(mm, "vo2MaxPreciseValue", "vo2MaxValue"), 1) if mm else None
@@ -702,11 +806,20 @@ def sync_fitness_scores(client, conn, errors: list) -> int:
         row["hill_strength"] = num(hs.get("strengthScore"), 0)
         row["hill_endurance"] = num(hs.get("enduranceScore"), 0)
 
+    return _sync_body_battery(client, conn, errors, day, row, stats)
+
+
+def _sync_body_battery(client, conn, errors: list, day: str, row: dict, stats: Optional[dict] = None) -> int:
     bb = safe("body_battery", errors, client.get_body_battery, day, day)
     tl = _bb_timeline(bb) if bb else None
     # Valeur « maintenant » : celle que Garmin donne dans le résumé du jour (la même que Garmin Connect).
     # La courbe détaillée peut s'arrêter plusieurs heures avant, on ne s'en sert qu'en secours.
-    stats = safe("body_battery_now", errors, client.get_stats, day) or {}
+    if not stats:
+        stats = safe("body_battery_now", errors, client.get_stats, day) or {}
+    # Heure de la dernière donnée reçue de la montre (fin de la plage couverte par le résumé du jour)
+    measured = str(stats.get("wellnessEndTimeLocal") or "").split(".")[0] if isinstance(stats, dict) else ""
+    if measured:
+        db.set_setting(conn, "last_measure_at", measured)
     now_val = num(stats.get("bodyBatteryMostRecentValue"), 0) if isinstance(stats, dict) else None
     if tl:
         if now_val is not None and tl[-1][1] != now_val:
@@ -877,6 +990,8 @@ def recompute_fitness(conn) -> int:
         ctl += (load - ctl) / CTL_DAYS
         atl += (load - atl) / ATL_DAYS
         tsb = ctl - atl
+        if d < db.HISTORY_START:
+            continue  # sert seulement à amorcer le calcul : aucun jour vide n'est créé avant l'historique
         conn.execute(
             "INSERT INTO daily_health (date, daily_load, ctl, atl, tsb) VALUES (?,?,?,?,?) "
             "ON CONFLICT(date) DO UPDATE SET daily_load=excluded.daily_load, "
@@ -884,7 +999,27 @@ def recompute_fitness(conn) -> int:
             (key, round(load, 1), round(ctl, 1), round(atl, 1), round(tsb, 1) + 0.0),
         )
         n += 1
+    # Jours antérieurs à l'historique et sans aucune mesure Garmin : restes d'anciennes synchros
+    conn.execute(
+        "DELETE FROM daily_health WHERE date < ? AND sleep_score IS NULL AND hrv_last_night_ms IS NULL "
+        "AND resting_hr IS NULL AND body_battery_max IS NULL AND vo2max IS NULL AND readiness_score IS NULL",
+        (db.HISTORY_START.isoformat(),),
+    )
     return n
+
+
+class GarminUnreachable(RuntimeError):
+    """Garmin n'a pas répondu à l'appel de base : la synchro est abandonnée et sera retentée."""
+
+
+def _fetch_activities(client, start: date, end: date) -> list:
+    try:
+        return client.get_activities_by_date(start.isoformat(), end.isoformat()) or []
+    except Exception as exc:
+        from garmin_client import reset_client
+
+        reset_client()  # la prochaine synchro se reconnectera avec le jeton enregistré
+        raise GarminUnreachable(f"Garmin ne répond pas ({type(exc).__name__} : {exc})") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -920,25 +1055,17 @@ def _run_sync(days: int, force: bool, client, log) -> dict:
         # 1. Résumés (fenêtre + amorçage CTL)
         warm_start = window_start - timedelta(days=WARMUP_DAYS)
         log(f"[1/5] Résumés d'activités du {warm_start} au {today}...")
-        acts = safe(
-            "get_activities_by_date",
-            errors,
-            client.get_activities_by_date,
-            warm_start.isoformat(),
-            today.isoformat(),
-        ) or []
+        acts = _fetch_activities(client, warm_start, today)
         for act in acts:
-            row = activity_summary_row(act)
-            if row["activity_id"]:
-                db.upsert(conn, "activities", "activity_id", row,
-                          keep_existing=("notes", "ai_analysis"))
+            aid = upsert_summary(conn, act)
+            if aid:
                 # Zones de FC issues du résumé (sans bornes) tant que le détail n'a pas été récupéré
                 zsecs = [act.get(f"hrTimeInZone_{i}") for i in range(1, 6)]
                 if any(v is not None for v in zsecs):
                     conn.execute(
                         "UPDATE activities SET hr_zones_json = ? WHERE activity_id = ? AND hr_zones_json IS NULL",
                         (db.to_json([{"zone": i + 1, "low_bpm": None, "secs": float(v or 0)}
-                                     for i, v in enumerate(zsecs)]), row["activity_id"]),
+                                     for i, v in enumerate(zsecs)]), aid),
                     )
         conn.commit()
         summary["activities_summaries"] = len(acts)
@@ -948,16 +1075,14 @@ def _run_sync(days: int, force: bool, client, log) -> dict:
             r["activity_id"]
             for r in conn.execute(
                 "SELECT activity_id FROM activities WHERE activity_date >= ? "
-                "AND (details_synced = 0 OR ? OR activity_date >= ?) "
+                "AND (details_synced = 0 OR ?) "
                 "ORDER BY activity_date",
-                (window_start.isoformat(), int(force), recent_cutoff),
+                (window_start.isoformat(), int(force)),
             )
         ]
         log(f"[2/5] Détail de {len(todo)} activité(s)...")
         for i, aid in enumerate(todo, 1):
-            row = activity_detail_row(client, aid, errors)
-            db.upsert(conn, "activities", "activity_id", row,
-                      keep_existing=("notes", "ai_analysis"))
+            store_detail(conn, activity_detail_row(client, aid, errors))
             conn.commit()
             log(f"      {i}/{len(todo)} : {aid}")
         summary["activities_detailed"] = len(todo)
@@ -981,6 +1106,7 @@ def _run_sync(days: int, force: bool, client, log) -> dict:
             db.upsert(conn, "daily_health", "date", daily_health_row(client, day, errors))
             conn.commit()
         summary["health_days"] = len(days_todo)
+        summary["health_details_backfilled"] = backfill_health_details(client, conn, errors, log)
 
         # 4. Prédictions
         log("[4/5] Prédictions de chrono...")
@@ -1011,10 +1137,11 @@ def _run_sync(days: int, force: bool, client, log) -> dict:
 
 
 def run_light_sync(client=None, log=print) -> dict:
-    """Synchro légère (toutes les 20 min) : les 3 derniers jours d'activités, la santé et les scores du jour.
+    """Synchro légère (toutes les 30 min) : les 3 derniers jours d'activités, la santé et la Body Battery du jour.
 
-    Elle laisse de côté les prédictions, les seuils et l'historique de forme, qui bougent peu et coûtent le plus
-    de requêtes : la synchro complète s'en charge (environ toutes les heures)."""
+    Elle laisse de côté les prédictions, les seuils, les scores et l'historique de forme, qui bougent peu et
+    coûtent le plus de requêtes : la synchro complète s'en charge (toutes les 6 heures).
+    Environ 6 appels à Garmin, 8 tant que la nuit n'est pas reçue."""
     if not SYNC_LOCK.acquire(blocking=False):
         raise RuntimeError("Une synchronisation est déjà en cours.")
     try:
@@ -1030,11 +1157,9 @@ def run_light_sync(client=None, log=print) -> dict:
         errors: list[str] = []
         summary: dict[str, Any] = {"days": 3, "light": True}
         with db.connect() as conn:
-            acts = safe("get_activities_by_date", errors, client.get_activities_by_date, since.isoformat(), today.isoformat()) or []
+            acts = _fetch_activities(client, since, today)
             for act in acts:
-                row = activity_summary_row(act)
-                if row["activity_id"]:
-                    db.upsert(conn, "activities", "activity_id", row, keep_existing=("notes", "ai_analysis"))
+                upsert_summary(conn, act)
             conn.commit()
             summary["activities_summaries"] = len(acts)
 
@@ -1047,15 +1172,22 @@ def run_light_sync(client=None, log=print) -> dict:
                 )
             ]
             for aid in todo:
-                row = activity_detail_row(client, aid, errors)
-                db.upsert(conn, "activities", "activity_id", row, keep_existing=("notes", "ai_analysis"))
+                store_detail(conn, activity_detail_row(client, aid, errors))
                 conn.commit()
             summary["activities_detailed"] = len(todo)
 
-            db.upsert(conn, "daily_health", "date", daily_health_row(client, today.isoformat(), errors))
+            # La nuit (sommeil, VFC) ne change plus une fois reçue : on ne la redemande pas toutes les 30 min
+            night = conn.execute(
+                "SELECT 1 FROM daily_health WHERE date = ? AND sleep_score IS NOT NULL "
+                "AND hrv_last_night_ms IS NOT NULL AND sleep_json IS NOT NULL",
+                (today.isoformat(),),
+            ).fetchone()
+            got: dict = {}
+            db.upsert(conn, "daily_health", "date",
+                      daily_health_row(client, today.isoformat(), errors, skip_night=bool(night), out=got))
             conn.commit()
             summary["health_days"] = 1
-            summary["fitness_scores"] = sync_fitness_scores(client, conn, errors)
+            summary["fitness_scores"] = sync_fitness_scores(client, conn, errors, light=True, stats=got.get("stats"))
             conn.commit()
             if todo:
                 summary["fitness_days"] = recompute_fitness(conn)

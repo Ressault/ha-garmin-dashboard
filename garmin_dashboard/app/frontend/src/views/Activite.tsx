@@ -3,32 +3,34 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MiniTrack } from "@/components/MiniTrack";
 import { useQuery } from "@/hooks/useQuery";
 import { api, type ActivityListItem, type RecordSport } from "@/lib/api";
-import { addDays, fmtClock, fmtHM, fmtPaceSec, isoDate, nf, parseDay, shortDay, speedDisplay } from "@/lib/format";
+import { addDays, fmtClock, fmtClockMin, fmtHM, fmtPaceSec, isoDate, nf, parseDay, shortDay, speedDisplay } from "@/lib/format";
 import { PATH } from "@/lib/route";
 import { AreaLine, Bars, EffortChart, RecordChart, StackedDays, type RecordPoint } from "@/ui/charts";
 import { useActivities, useHealth } from "@/ui/data";
-import { GROUP_META, GROUP_ORDER, groupOf, pct, totals, windows, type Group } from "@/ui/derive";
+import { Guard } from "@/ui/status";
+import { activeSecs, GROUP_META, GROUP_ORDER, groupOf, pct, totals, windows, type Group } from "@/ui/derive";
 import { GROUP_ICON, IGrid, ISearch, MiniList, MiniMedal, MiniPlan, MiniTrend, MiniZones } from "@/ui/icons";
 import { Badge, Card, Chip, ChipRow, TINT, Delta, Group as Rows, H2, Hero, Hr, Lbl, P, Page, Sm, Skel, Stagger, Val } from "@/ui/kit";
 
 export type Cur = "activites" | "progres" | "entrainement" | "records" | "plan";
 export function ActChips({ current }: { current: Cur }) {
   const acts = useActivities();
-  const preds = useQuery("predictions-400", () => api.predictions(400));
+  const est = useQuery("estimate", () => api.estimate());
   const effort = useQuery("effort", () => api.effort());
   const w = windows();
   const n = acts.data ? totals(acts.data.items, ...w.weekToDate).count : null;
-  const half = preds.data?.latest?.time_half_s;
+  const h = est.data?.half;
+  const half = h ? (h.low_s + h.high_s) / 2 : null;
   const plans = useQuery("plans", () => api.plans());
   const goal = plans.data?.plans.find((p) => p.goal_date)?.goal_date;
   const left = goal ? Math.ceil((parseDay(goal).getTime() - parseDay(isoDate(new Date())).getTime()) / 86400000) : null;
   return (
     <ChipRow label="Sections d'Activité">
       <Chip href={PATH.activites} current={current === "activites"} icon={<MiniList />} label="Activités" value={n != null ? `${n} cette sem.` : "—"} />
-      <Chip href={PATH.progres} current={current === "progres"} icon={<MiniTrend />} label="Progrès" value={half ? `Semi ${fmtClock(half).slice(0, -3)}` : "—"} />
+      <Chip href={PATH.progres} current={current === "progres"} icon={<MiniTrend />} label="Progrès" value={half ? `Semi ≈ ${fmtClockMin(half)}` : "—"} />
       <Chip href={PATH.entrainement} current={current === "entrainement"} icon={<MiniZones />} label="Entraînement" value={effort.data ? `Charge ${nf(effort.data.current)}` : "—"} />
       <Chip href={PATH.records} current={current === "records"} icon={<MiniMedal />} label="Records" value="Meilleurs efforts" />
-      <Chip href={PATH.plan} current={current === "plan"} icon={<MiniPlan />} label="Programme" value={left != null ? (left >= 0 ? `J-${left}` : "Terminé") : plans.data?.plans.length ? "En cours" : "Importer"} />
+      <Chip href={PATH.plan} current={current === "plan"} icon={<MiniPlan />} label="Programme" value={!plans.data ? "—" : left != null ? (left >= 0 ? `J-${left}` : "Terminé") : plans.data.plans.length ? "En cours" : "Importer"} />
     </ChipRow>
   );
 }
@@ -56,14 +58,14 @@ function ActRow({ a }: { a: ActivityListItem }) {
     a.distance_m ? `${nf(a.distance_m / 1000, 1)} km` : fmtHM(a.duration_s),
     a.distance_m && sp.value !== "—" ? `${sp.value} ${sp.unit}` : null,
     a.avg_hr ? `${nf(a.avg_hr)} BPM` : null,
-    a.distance_m ? null : a.start_time_local.slice(11, 16),
+    a.distance_m ? null : `à ${a.start_time_local.slice(11, 16)}`,
   ].filter(Boolean).join(" · ");
   // « Perrusson Course à pied » → « Course · Perrusson » : le sport d'abord, le lieu ensuite, sans doublon
   const raw = (a.name ?? "").trim();
   const sfx = GARMIN_SUFFIX.find((x) => raw.toLowerCase().endsWith(" " + x.toLowerCase()));
   const title = !raw ? GROUP_META[g].label : sfx ? `${KIND[g]} · ${raw.slice(0, raw.length - sfx.length).trim()}` : raw;
   return (
-    <a href={`#/activity/${a.activity_id}`} className="hk-press flex min-h-[56px] items-center gap-3 px-4 py-2.5">
+    <a href={`#/activity/${a.activity_id}`} className="hk-press flex min-h-[60px] items-center gap-3 px-4 py-2.5">
       {a.mini_track && a.mini_track.length > 1 ? (
         <MiniTrack points={a.mini_track} type={a.sport_type} className="h-11 w-16 shrink-0" />
       ) : (
@@ -72,8 +74,8 @@ function ActRow({ a }: { a: ActivityListItem }) {
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[17px]">{title}</span>
-        <span className="block truncate text-[14px] text-label2">{meta}</span>
+        <span className="line-clamp-2 text-[17px] leading-[1.25]">{title}</span>
+        <span className="block text-[14px] text-label2">{meta}</span>
       </span>
       {a.training_load != null && <span className="flex shrink-0 flex-col items-end leading-tight"><span className="text-[15px] font-semibold tabular-nums">{nf(a.training_load)}</span><span className="text-[11px] text-label2">charge</span></span>}
     </a>
@@ -92,10 +94,11 @@ export function Activites() {
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = isoDate(addDays(w.weekStart, i));
     const parts = GROUP_ORDER.filter((g) => f === "all" || g === f)
-      .map((g) => ({ color: GROUP_META[g].color, v: items.filter((a) => a.activity_date === d && groupOf(a.sport_type) === g).reduce((s, a) => s + (a.duration_s ?? 0) / 60, 0) }))
+      .map((g) => ({ g, color: GROUP_META[g].color, v: items.filter((a) => a.activity_date === d && groupOf(a.sport_type) === g).reduce((s, a) => s + activeSecs(a) / 60, 0) }))
       .filter((p) => p.v > 0);
     return { label: ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."][i], strong: i === w.dayIdx, parts };
   });
+  const weekGroups = GROUP_ORDER.filter((g) => days.some((d) => d.parts.some((p) => p.g === g)));
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
     return items.filter((a) => (f === "all" || groupOf(a.sport_type) === f) && (!s || (a.name ?? "").toLowerCase().includes(s)));
@@ -116,10 +119,15 @@ export function Activites() {
     }
     return out;
   }, [list, more, w.today, w.weekStart]);
-  const dsec = cur.secs - prev.secs, dkm = cur.km - prev.km, dd = cur.dplus - prev.dplus;
+  // Tous sports confondus, additionner les kilomètres de vélo et de course n'a pas de sens : on montre la distance à pied
+  const curKm = f === "all" ? totals(items, ...w.weekToDate, "foot").km : cur.km;
+  const prevKm = f === "all" ? totals(items, ...w.prevWeekToDate, "foot").km : prev.km;
+  const dsec = cur.secs - prev.secs, dkm = curKm - prevKm, dd = cur.dplus - prev.dplus;
   const prevLabel = `lun. → ${["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."][w.dayIdx]}`;
+  if (acts.failed) return <Frame current="activites" tint="red"><Guard queries={[acts]}>{null}</Guard></Frame>;
   return (
     <Frame current="activites" tint="red">
+      <h1 className="sr-only">Activités</h1>
       <div className="mt-4 flex flex-col gap-3.5">
         <label className="flex h-11 items-center gap-2 rounded-xl bg-fill px-3 text-label2">
           <ISearch />
@@ -144,13 +152,20 @@ export function Activites() {
             })}
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
-            <div><Sm>Temps</Sm><Val size={24} className="whitespace-nowrap">{fmtHM(cur.secs)}</Val><Delta value={dsec} text={`${dsec >= 0 ? "+" : "−"}${fmtHM(Math.abs(dsec))}`} /></div>
-            <div><Sm>Distance</Sm><Val size={24} className="whitespace-nowrap">{nf(cur.km, 1)} km</Val><Delta value={dkm} text={`${dkm >= 0 ? "+" : "−"}${nf(Math.abs(dkm), 1)} km`} /></div>
+            <div><Sm>Temps actif</Sm><Val size={24} className="whitespace-nowrap">{fmtHM(cur.secs)}</Val><Delta value={dsec} text={`${dsec >= 0 ? "+" : "−"}${fmtHM(Math.abs(dsec))}`} /></div>
+            <div><Sm>{f === "all" ? "À pied" : "Distance"}</Sm><Val size={24} className="whitespace-nowrap">{nf(curKm, 1)} km</Val><Delta value={dkm} text={`${dkm >= 0 ? "+" : "−"}${nf(Math.abs(dkm), 1)} km`} /></div>
             <div><Sm>Dénivelé +</Sm><Val size={24} className="whitespace-nowrap">{nf(cur.dplus)} m</Val><Delta value={dd} text={`${dd >= 0 ? "+" : "−"}${nf(Math.abs(dd))} m`} /></div>
           </div>
           <div className="mt-3.5">
             <StackedDays days={days} label="Temps d'activité par jour cette semaine, coloré par sport" />
           </div>
+          {weekGroups.length > 1 && (
+            <ul className="m-0 mb-1.5 flex list-none flex-wrap gap-x-3.5 gap-y-1 p-0 text-[12px] text-label2" aria-label="Légende des sports">
+              {weekGroups.map((g) => (
+                <li key={g} className="whitespace-nowrap"><span aria-hidden className="mr-1.5 inline-block size-2.5 rounded-[3px] align-[-1px]" style={{ background: GROUP_META[g].color }} />{SHORT[g]}</li>
+              ))}
+            </ul>
+          )}
           <Sm className="mt-1">Comparé au même moment de la semaine dernière ({prevLabel}) · {cur.count} activité{cur.count > 1 ? "s" : ""}</Sm>
         </Card>
       </div>
@@ -165,7 +180,7 @@ export function Activites() {
             </div>
           ))}
           {list.length > more && (
-            <button type="button" onClick={() => setMore((m) => m + 30)} className="hk-press mx-auto mt-5 block rounded-full bg-fill px-5 py-2.5 text-[15px] font-semibold">
+            <button type="button" onClick={() => setMore((m) => m + 30)} className="hk-press mx-auto mt-5 block h-11 rounded-full bg-fill px-5 text-[15px] font-semibold">
               Afficher plus
             </button>
           )}
@@ -197,24 +212,46 @@ export function Progres() {
   const prevTotal = m?.series.find((x) => x.month === m.previous_month)?.km ?? null;
   const monthName = (k?: string) => (k ? parseDay(`${k}-01`).toLocaleDateString("fr-FR", { month: "long" }) : "");
   const histHalf = (p?.history ?? []).filter((h) => h.time_half_s != null).map((h, i) => [i, h.time_half_s! / 60] as [number, number]);
+  const est = useQuery("estimate", () => api.estimate());
+  const eh = est.data?.half ?? null;
+  const hMin = histHalf.length ? Math.min(...histHalf.map((h) => h[1])) : 0, hMax = histHalf.length ? Math.max(...histHalf.map((h) => h[1])) : 0;
   return (
     <Frame current="progres" tint="purple">
-      <Hero title={dHalf != null && dHalf < -30 ? `Tu as gagné ${fmtHM(Math.abs(dHalf))} sur le semi` : "Tes progrès"}>
-        {dHalf != null && dHalf < 0 ? "Depuis ta première estimation, ton chrono prévu a fondu. " : ""}
+      <Hero title="Tes progrès">
+        {eh ? `Tes records récents placent ton semi entre ${fmtClockMin(eh.low_s)} et ${fmtClockMin(eh.high_s)}. ` : ""}
         {avg4 != null ? `Tu cours en moyenne ${nf(avg4)} km par semaine sur les 4 dernières semaines complètes.` : ""}
       </Hero>
       {!p ? (
-        <Stagger><Skel h={260} /></Stagger>
+        <Guard queries={[preds]}><Stagger><Skel h={260} /></Stagger></Guard>
       ) : (
         <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2">
-          <Card tint="purple">
-            <div className="flex items-baseline justify-between"><Lbl>Prédictions de chrono</Lbl><Sm>Garmin</Sm></div>
+          {eh && (
+            <Card tint="purple">
+              <div className="flex items-baseline justify-between"><Lbl>Semi-marathon · d'après tes chronos</Lbl></div>
+              <p className="m-0 mt-1 text-[36px] leading-tight font-bold tracking-[-0.03em] tabular-nums">{fmtClockMin(eh.low_s)} – {fmtClockMin(eh.high_s)}</p>
+              <Sm className="text-[15px]">soit {fmtPaceSec(eh.pace_low_s_km)} à {fmtPaceSec(eh.pace_high_s_km)} /km</Sm>
+              <Hr />
+              <div className="flex flex-col gap-2">
+                {eh.bases.map((b) => (
+                  <a key={b.label} href={`#/activity/${b.activity_id}`} className="hk-press flex min-h-11 items-center justify-between gap-3 text-[15px]">
+                    <span>Record {b.label} <span className="text-label2">· {shortDay(b.date)}</span></span>
+                    <span className="font-semibold tabular-nums">{fmtClock(b.time_s)} → {fmtClockMin(b.half_s)}</span>
+                  </a>
+                ))}
+              </div>
+              <Sm className="mt-2">Extrapolation de Riegel sur tes records des {eh.days} derniers jours, à forme égale et sur plat.</Sm>
+            </Card>
+          )}
+          <Card>
+            <div className="flex items-baseline justify-between"><Lbl>Estimation de la montre</Lbl><Sm>Garmin</Sm></div>
             <Sm className="mt-2 text-[15px]">Semi-marathon</Sm>
-            <p className="m-0 text-[40px] leading-tight font-bold tracking-[-0.03em] tabular-nums">{fmtClock(half)}</p>
-            {dHalf != null && dHalf !== 0 && <p className="m-0 text-[15px] font-semibold" style={{ color: dHalf < 0 ? "var(--ok)" : "var(--warn)" }}>{dHalf < 0 ? "−" : "+"}{fmtHM(Math.abs(dHalf))} depuis ta première estimation</p>}
+            <p className="m-0 text-[32px] leading-tight font-bold tracking-[-0.03em] tabular-nums">{fmtClock(half)}</p>
+            {dHalf != null && dHalf !== 0 && <p className="m-0 text-[15px] font-semibold" style={{ color: dHalf < 0 ? "var(--ok)" : "var(--warn)" }}>{dHalf < 0 ? "−" : "+"}{fmtHM(Math.abs(dHalf))} depuis sa première estimation</p>}
+            {eh && half != null && half < eh.low_s - 300 && <Sm className="mt-1.5" style={{ color: "var(--warn-text)" }}>Plus rapide de {fmtHM(eh.low_s - half)} que ce que montrent tes chronos : à ne pas prendre comme allure de course.</Sm>}
             {histHalf.length > 2 && (
               <div className="mt-2">
-                <AreaLine points={histHalf.map(([i, v]) => [i, -v] as [number, number])} xMax={histHalf.length - 1} yMin={-Math.max(...histHalf.map((h) => h[1])) - 1} yMax={-Math.min(...histHalf.map((h) => h[1])) + 1} color="var(--sys-purple)" height={80} xLabels={[{ x: 0, t: shortDay(p.history.find((h) => h.time_half_s != null)!.date) }, { x: histHalf.length - 1, t: "auj." }]} label="Évolution du chrono prévu sur semi (plus haut = plus rapide)" />
+                <AreaLine points={histHalf.map(([i, v]) => [i, -v] as [number, number])} xMax={histHalf.length - 1} yMin={-hMax - 1} yMax={-hMin + 1} yLabels={[{ v: -hMin, t: fmtClock(hMin * 60).slice(0, -3) }, { v: -hMax, t: fmtClock(hMax * 60).slice(0, -3) }]} color="var(--sys-purple)" height={96} xLabels={[{ x: 0, t: shortDay(p.history.find((h) => h.time_half_s != null)!.date) }, { x: histHalf.length - 1, t: "auj." }]} label="Évolution du chrono prévu sur semi (plus haut = plus rapide)" />
+                <Sm>Plus haut = plus rapide</Sm>
               </div>
             )}
             <Hr />
@@ -265,6 +302,7 @@ export function Entrainement() {
   const zones = useQuery("zones-28-all", () => api.zones(28, "all"));
   const { fit } = useHealth();
   const e = effort.data, z = zones.data;
+  if (effort.failed || zones.failed) return <Frame current="entrainement" tint="sky"><Guard queries={[effort, zones]}>{null}</Guard></Frame>;
   const series = (fit?.series ?? []).slice(-42);
   const latest = fit?.latest;
   const ctlPts = series.map((d, i) => [i, d.ctl] as [number, number | null]).filter((x): x is [number, number] => x[1] != null);
@@ -299,7 +337,7 @@ export function Entrainement() {
         ) : <Skel h={300} />}
         {z ? (
           <Card>
-            <div className="flex items-baseline justify-between"><Lbl>Zones de FC · 4 semaines</Lbl><Sm>{fmtHM(z.current.total)} au total</Sm></div>
+            <div className="flex items-baseline justify-between"><Lbl>Zones de FC · 4 semaines</Lbl><Sm>{fmtHM(z.current.total)} avec FC mesurée</Sm></div>
             <div className="mt-2.5 flex flex-col">
               {ZONES.map((zz, k) => {
                 const i = 4 - k;
@@ -426,6 +464,7 @@ export function Records() {
   const noData = eff.data && dists.length === 0;
   return (
     <Frame current="records" tint="gold">
+      <h1 className="sr-only">Records</h1>
       <div className="mt-4 flex flex-col gap-3.5">
         <div role="group" aria-label="Sport" className="grid h-11 grid-cols-3 rounded-full bg-fill p-1">
           {SPORTS.map(({ k, label }) => (
@@ -435,13 +474,13 @@ export function Records() {
           ))}
         </div>
         {!eff.data ? (
-          <Skel h={320} />
+          <Guard queries={[eff]}><Skel h={320} /></Guard>
         ) : noData ? (
           <Card><P className="text-label2">Aucun effort calculé pour ce sport : il faut au moins une sortie détaillée assez longue.</P></Card>
         ) : (
           <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2">
             <Card>
-              <div role="tablist" aria-label="Vue" className="mb-3.5 grid h-9 grid-cols-2 rounded-full bg-fill p-0.5">
+              <div role="tablist" aria-label="Vue" className="mb-3.5 grid h-11 grid-cols-2 rounded-full bg-fill p-1">
                 {([["analyse", "Analyse"], ["top", "Top 10"]] as const).map(([k, l]) => (
                   <button key={k} type="button" role="tab" aria-selected={tab === k} aria-pressed={tab === k} onClick={() => setTab(k)} className="hk-seg rounded-full text-[14px] font-semibold">
                     {l}
@@ -481,6 +520,10 @@ export function Records() {
                   </div>
                   <div className="mt-4">
                     <RecordChart points={points} fmtY={(v) => (bike ? `${nf(v * 3.6, 1)} km/h` : `${fmtPaceSec(1000 / v)} /km`)} label={`Évolution de tes temps sur ${cur.label}`} />
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-label2">
+                    <span><span aria-hidden className="mr-1.5 inline-block size-2 rounded-full bg-label2/55 align-middle" />une sortie</span>
+                    <span><span aria-hidden className="mr-1.5 inline-block h-[3px] w-3.5 rounded bg-[var(--sys-blue)] align-middle" />tendance des 4 dernières</span>
                   </div>
                   <label className="hk-press relative mt-3 flex h-12 items-center justify-center gap-2 rounded-full border border-sep bg-card text-[16px] font-semibold">
                     {yr === "all" ? "Filtrer par année" : `Année : ${yr}`}

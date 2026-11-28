@@ -12,6 +12,11 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from datetime import date
+
+# Début de l'historique chargé et affiché (achat de la montre). Seul endroit où cette date est écrite.
+HISTORY_START = date(2025, 11, 1)
+
 # GARMIN_DB permet de placer la base ailleurs (add-on Home Assistant : /data)
 DB_PATH = Path(os.getenv("GARMIN_DB") or Path(__file__).resolve().parent / "garmin_local.db")
 
@@ -148,6 +153,11 @@ def init_db(db_path: Optional[Path] = None) -> None:
         have = {r["name"] for r in conn.execute("PRAGMA table_info(activities)")}
         if "segments_json" not in have:
             conn.execute("ALTER TABLE activities ADD COLUMN segments_json TEXT")
+        # summary_hash : empreinte du résumé Garmin (le détail n'est retéléchargé que si elle change)
+        # detail_tries : nombre d'essais de détail ratés (on abandonne après quelques essais)
+        for col, typ in (("summary_hash", "TEXT"), ("detail_tries", "INTEGER DEFAULT 0")):
+            if col not in have:
+                conn.execute(f"ALTER TABLE activities ADD COLUMN {col} {typ}")
         dh = {r["name"] for r in conn.execute("PRAGMA table_info(daily_health)")}
         for col, typ in (
             ("vo2max", "REAL"), ("fitness_age", "REAL"), ("chrono_age", "REAL"),
@@ -157,6 +167,8 @@ def init_db(db_path: Optional[Path] = None) -> None:
             ("body_battery_now", "REAL"), ("body_battery_charged", "REAL"),
             ("body_battery_drained", "REAL"), ("body_battery_json", "TEXT"),
             ("sleep_json", "TEXT"), ("heart_json", "TEXT"),
+            # detail_v : version du remplissage des mesures détaillées (phases de sommeil, FC horaire)
+            ("detail_v", "INTEGER DEFAULT 0"),
         ):
             if col not in dh:
                 conn.execute(f"ALTER TABLE daily_health ADD COLUMN {col} {typ}")
@@ -198,3 +210,15 @@ def upsert(
         f"ON CONFLICT({key}) DO UPDATE SET {', '.join(updates)}"
     )
     conn.execute(sql, row)
+
+
+def get_setting(conn: sqlite3.Connection, key: str, default: Optional[str] = None) -> Optional[str]:
+    row = conn.execute("SELECT value FROM profile WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row and row["value"] not in (None, "") else default
+
+
+def set_setting(conn: sqlite3.Connection, key: str, value: Optional[str]) -> None:
+    conn.execute(
+        "INSERT INTO profile(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value or ""),
+    )

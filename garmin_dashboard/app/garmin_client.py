@@ -44,3 +44,9 @@ def get_garmin_client() -> Garmin:
 
     _CLIENT = client
     return client
+
+
+def reset_client() -> None:
+    """Oublie la session en mémoire : la prochaine synchro se reconnecte avec le jeton enregistré."""
+    global _CLIENT
+    _CLIENT = None

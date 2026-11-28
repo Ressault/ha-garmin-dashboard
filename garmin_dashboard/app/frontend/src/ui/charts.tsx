@@ -261,21 +261,29 @@ export function LevelBars({ points, color, label }: { points: [number, number][]
 }
 
 /* ---------- Courbe avec aire dégradée (Body Battery, condition physique) ---------- */
-export function AreaLine({ points, xMax, yMin, yMax, color, height = 92, xLabels, label, dots }: { points: [number, number][]; xMax: number; yMin: number; yMax: number; color: string; height?: number; xLabels: { x: number; t: string }[]; label: string; dots?: boolean }) {
+export function AreaLine({ points, xMax, yMin, yMax, color, height = 92, xLabels, yLabels, label, dots }: { points: [number, number][]; xMax: number; yMin: number; yMax: number; color: string; height?: number; xLabels: { x: number; t: string }[]; yLabels?: { v: number; t: string }[]; label: string; dots?: boolean }) {
   const id = useId().replace(/:/g, "");
-  const [ref, W] = useW(), H = height - 22;
-  const xy = points.map(([x, v]) => [(x / xMax) * (W - PAD), 8 + (H - 8) - ((v - yMin) / (yMax - yMin)) * (H - 8)] as [number, number]);
+  const [ref, W0] = useW(), H = height - 22;
+  const W = W0 - (yLabels ? 46 : 0); // gouttière droite pour les graduations
+  const Yv = (v: number) => 8 + (H - 8) - ((v - yMin) / (yMax - yMin)) * (H - 8);
+  const xy = points.map(([x, v]) => [(x / xMax) * (W - PAD), Yv(v)] as [number, number]);
   if (!xy.length) return null;
   const line = smoothPath(xy);
   const last = xy[xy.length - 1];
   return (
-    <svg ref={ref} width="100%" height={height} viewBox={`0 0 ${W} ${height}`} role="img" aria-label={label}>
+    <svg ref={ref} width="100%" height={height} viewBox={`0 0 ${W0} ${height}`} role="img" aria-label={label}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={color} stopOpacity=".3" />
           <stop offset="1" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
+      {yLabels?.map((l, i) => (
+        <g key={`y${i}`}>
+          <line x1="0" x2={W} y1={Yv(l.v)} y2={Yv(l.v)} className="stroke-sep" />
+          <text x={W0} y={Yv(l.v) + 4} fontSize="11" textAnchor="end" className={T}>{l.t}</text>
+        </g>
+      ))}
       <path d={`${line} L${last[0].toFixed(1)},${H} L${xy[0][0].toFixed(1)},${H} Z`} fill={`url(#${id})`} />
       <path d={line} fill="none" stroke={color} strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
       {dots && xy.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="2.2" fill={color} />)}
@@ -420,7 +428,8 @@ export function Balance({ left }: { left: number }) {
 }
 
 
-/** Courbe des temps d'un même effort au fil des sorties, avec les 3 meilleurs en médaille (comme Strava). */
+/** Temps d'un même effort au fil des sorties. Chaque point et chaque médaille est posé sur le temps réel de la
+ *  sortie ; la courbe bleue n'est qu'une tendance (meilleur des 4 dernières sorties, lissé) et ne porte aucune valeur. */
 export type RecordPoint = { t: number; v: number; medal?: 0 | 1 | 2 };
 const MEDAL_FILL = [
   { bg: "#F5C33B", fg: "#7A5600", t: "PR" },
@@ -460,7 +469,7 @@ export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fm
   const dateTxt = (t: number) => new Date(t).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "2-digit" });
   const t0 = pts[0].t, t1 = pts[n - 1].t;
   // médailles : rangée au-dessus du tracé, espacées d'au moins 23 px, reliées à leur point
-  const medals = pts.map((p, i) => ({ p, x: X(i), y: Y(form[i]) })).filter((m) => m.p.medal != null);
+  const medals = pts.map((p, i) => ({ p, x: X(i), y: Y(p.v) })).filter((m) => m.p.medal != null);
   const lane = medals.map((m) => ({ ...m, bx: m.x }));
   lane.forEach((m, i) => { if (i) m.bx = Math.max(m.bx, lane[i - 1].bx + 23); });
   const over = lane.length ? lane[lane.length - 1].bx - (PW - 10) : 0;
@@ -483,14 +492,13 @@ export function RecordChart({ points, fmtY, label }: { points: RecordPoint[]; fm
       ))}
       {area && <path d={area} fill={`url(#${gid})`} />}
       {pts.map((p, i) => p.medal == null ? <circle key={i} cx={X(i)} cy={Y(p.v)} r="3.5" className="fill-label2" fillOpacity={inScale(p) ? 0.55 : 0.3} /> : null)}
-      {d && <path d={d} fill="none" stroke="var(--sys-blue)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
-      <circle cx={line[0][0]} cy={line[0][1]} r="5" className="fill-card" stroke="var(--sys-orange)" strokeWidth="2" />
+      {d && <path d={d} fill="none" stroke="var(--sys-blue)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
       {lane.map(({ p, x, y, bx }, i) => {
         const m = MEDAL_FILL[p.medal as number];
         return (
           <g key={`m${i}`}>
             <line x1={x} y1={y} x2={bx} y2={22} stroke={m.bg} strokeWidth="1.5" />
-            <circle cx={x} cy={y} r="4" fill={m.bg} className="stroke-card" strokeWidth="1.5" />
+            <circle cx={x} cy={y} r="5" fill={m.bg} className="stroke-card" strokeWidth="2" />
             <g transform={`translate(${bx},12)`}>
               <circle r="10" fill={m.bg} className="stroke-card" strokeWidth="2" />
               <text textAnchor="middle" dy="3.4" fontSize={p.medal === 0 ? 8.5 : 10.5} fontWeight="800" fill={m.fg}>{m.t}</text>

@@ -203,7 +203,7 @@ export const TrackMap = forwardRef<TrackMapHandle, Props>(function TrackMap({ tr
   const foot = prep?.foot ?? true;
   const legend = coloring
     ? mode === "hr"
-      ? { lo: `${nf(coloring.lo)} bpm`, hi: `${nf(coloring.hi)} bpm`, title: "Fréquence cardiaque" }
+      ? { lo: `${nf(coloring.lo)} BPM`, hi: `${nf(coloring.hi)} BPM`, title: "Fréquence cardiaque" }
       : {
           lo: foot ? `${fmtPace(coloring.lo)} /km` : `${nf(coloring.lo * 3.6, 1)} km/h`,
           hi: foot ? `${fmtPace(coloring.hi)} /km` : `${nf(coloring.hi * 3.6, 1)} km/h`,

@@ -48,6 +48,13 @@ export function fmtClock(totalSeconds: number | null | undefined): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
+/** Chrono arrondi à la minute : « 1:58 » (pour une estimation, les secondes n'ont pas de sens) */
+export function fmtClockMin(totalSeconds: number | null | undefined): string {
+  if (totalSeconds == null || !Number.isFinite(totalSeconds)) return "—";
+  const m = Math.round(totalSeconds / 60);
+  return `${Math.floor(m / 60)}:${pad(m % 60)}`;
+}
+
 /** Durée lisible : « 4 h 12 » ou « 42 min » */
 export function fmtHM(seconds: number | null | undefined): string {
   if (seconds == null) return "—";

@@ -1,14 +1,17 @@
 import { useState } from "react";
 
-import { useQuery } from "@/hooks/useQuery";
-import { api, type FitnessDay, type HeartDay, type SleepDetails } from "@/lib/api";
-import { addDays, fmtHM, isoDate, nf, shortDay } from "@/lib/format";
+import { toast } from "sonner";
+
+import { useDataVersion, useQuery } from "@/hooks/useQuery";
+import { api, type FitnessDay, type HeartDay, type SleepDetails, type Thresholds } from "@/lib/api";
+import { addDays, fmtHM, fmtPace, isoDate, nf, shortDay } from "@/lib/format";
 import { PATH } from "@/lib/route";
 import { Balance, BandBars, DashBand, HourRanges, Hypnogram, LineBand, LoadChart, Ring, STAGE_COLOR } from "@/ui/charts";
 import { useHealth, usePillars } from "@/ui/data";
 import { enduranceClass, lastWith, personalBand, PILLAR_TONE, type PillarStatus } from "@/ui/derive";
 import { BigHeart, IMoon, ISun, MiniHeart, MiniPillars, MiniSleep } from "@/ui/icons";
 import { Badge, Card, Chip, ChipRow, Hero, Hr, Lbl, P, Page, Sm, Skel, Stagger, Val } from "@/ui/kit";
+import { Guard, MeasuredAt } from "@/ui/status";
 import { SleepWeek } from "./Synthese";
 
 function LonChips({ current }: { current: "piliers" | "sommeil" | "forme" }) {
@@ -18,7 +21,7 @@ function LonChips({ current }: { current: "piliers" | "sommeil" | "forme" }) {
   const sleepLabel = l?.sleep_score == null ? "—" : l.sleep_score >= 80 ? "Bon" : l.sleep_score >= 60 ? "Correct" : "Faible";
   return (
     <ChipRow label="Sections de Longévité">
-      <Chip href={PATH.piliers} current={current === "piliers"} icon={<MiniPillars colors={colors} />} label="Mes piliers" value={colors.length ? `${greens} sur 4 au vert` : "—"} />
+      <Chip href={PATH.piliers} current={current === "piliers"} icon={<MiniPillars colors={colors} />} label="Mes piliers" value={colors.length ? `${greens} sur 4 OK` : "—"} />
       <Chip href={PATH.sommeil} current={current === "sommeil"} icon={<MiniSleep score={l?.sleep_score != null ? Math.round(l.sleep_score) : null} />} label="Sommeil" value={sleepLabel} />
       <Chip href={PATH.forme} current={current === "forme"} icon={<MiniHeart />} label="Forme et santé" value={l?.resting_hr != null ? `${nf(l.resting_hr)} BPM` : "—"} />
     </ChipRow>
@@ -32,8 +35,9 @@ const lastN = (s: FitnessDay[], n: number) => s.slice(-n);
 /* =========================== Mes piliers =========================== */
 export function Piliers() {
   const { p, dyn, runId, series, latest } = usePillars();
+  const { fitQ } = useHealth();
   const th = useQuery("thresholds", () => api.thresholds());
-  if (!p || !latest) return <Page tint="purple"><LonChips current="piliers" /><Stagger className="mt-6"><Skel h={260} /><Skel h={260} /></Stagger></Page>;
+  if (!p || !latest) return <Page tint="purple"><LonChips current="piliers" /><Guard queries={[fitQ]}><Stagger className="mt-6"><Skel h={260} /><Skel h={260} /></Stagger></Guard></Page>;
   const ec = p.ec;
   const toNext = ec?.next && latest.endurance_score != null ? Math.round(ec.next.min - latest.endurance_score) : null;
   const hrv14 = lastN(series, 14).map((d) => d.hrv_last_night_ms);
@@ -44,7 +48,7 @@ export function Piliers() {
     <Page tint="purple">
       <LonChips current="piliers" />
       <Hero title="Tes piliers de forme">
-        {p.endur === "Optimal" ? "Ton moteur cardio est excellent." : "Ton moteur cardio progresse."} {weakest ? `La priorité de la semaine : ${weakest}.` : "Tous tes piliers sont au vert."}
+        {p.endur === "Optimal" ? "Ton moteur cardio est excellent." : "Ton moteur cardio progresse."} {weakest ? `La priorité de la semaine : ${weakest}.` : "Aucun pilier n'est à surveiller."}
       </Hero>
       <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2">
         <Card href={PATH.forme}>
@@ -68,7 +72,7 @@ export function Piliers() {
           </p>
           {p.band && <div className="mt-3"><DashBand values={hrv14} band={p.band} caption={`14 dernières nuits · bande = ta plage ${p.band[0]}–${p.band[1]} ms`} label="VFC des 14 dernières nuits dans ta plage personnelle" /></div>}
           <P className="mt-2.5">
-            {p.band && p.week != null && p.week >= p.band[0] ? "Ta moyenne reste dans ta plage." : "Ta moyenne passe sous ta plage."} {p.low > 0 ? `${p.low} nuit${p.low > 1 ? "s" : ""} sous 70 cette semaine : protège ton heure de coucher.` : "Ton sommeil soutient bien ta récupération."}
+            {p.band && p.week != null && p.week >= p.band[0] ? "Ta moyenne reste dans ta plage." : "Ta moyenne passe sous ta plage."} {p.low > 0 ? `${p.low} nuit${p.low > 1 ? "s" : ""} avec un score de sommeil sous 70 cette semaine : protège ton heure de coucher.` : "Ton sommeil soutient bien ta récupération."}
           </P>
         </Card>
 
@@ -108,7 +112,7 @@ export function Piliers() {
             </div>
             <P className="mt-3">
               {p.devBal != null && p.devBal > 2 ? `Écart gauche-droite de ${nf(p.devBal * 2, 1)} points : surveille ton genou ${dyn.balance! < 50 ? "droit" : "gauche"}. ` : "Équilibre correct. "}
-              {dyn.cadence != null && dyn.cadence < 160 ? "Monter vers 160 pas/min en footing réduit l'impact sur le genou, utile pour ton valgus. " : ""}L'HRM-600 ne mesure pas le valgus lui-même.
+              {dyn.cadence != null && dyn.cadence < 160 ? "Monter vers 160 pas/min en footing réduit l'impact à chaque appui." : ""}
             </P>
           </Card>
         )}
@@ -121,6 +125,10 @@ export function Piliers() {
 const hhmm = (ms: number) => new Date(ms).toISOString().slice(11, 16); // horodatage « local » Garmin → affiché tel quel
 const minToClock = (m: number) => `${String(Math.floor(((m % 1440) + 1440) % 1440 / 60)).padStart(2, "0")}:${String(((m % 60) + 60) % 60).padStart(2, "0")}`;
 const QUAL: Record<string, [string, string]> = { EXCELLENT: ["Excellent", "var(--ok)"], GOOD: ["Bon", "var(--ok)"], FAIR: ["Correct", "var(--label2)"], POOR: ["Faible", "var(--warn)"] };
+// Pour les réveils, Garmin note leur nombre : « POOR » veut dire beaucoup de réveils, pas « peu d'éveil »
+const QUAL_AWAKE: Record<string, [string, string]> = { EXCELLENT: ["Très peu", "var(--ok)"], GOOD: ["Peu", "var(--ok)"], FAIR: ["Quelques-uns", "var(--label2)"], POOR: ["Trop nombreux", "var(--warn)"] };
+// Couleurs de texte des phases (assez sombres en clair, assez claires en sombre : contraste ≥ 4,5:1)
+const STAGE_TEXT = { awake: "var(--stage-awake-text)", rem: "var(--stage-rem-text)", light: "var(--stage-light-text)", deep: "var(--stage-deep-text)" } as const;
 
 function SleepCard({ s, score, official }: { s: SleepDetails; score: number | null; official: number | null }) {
   const phases = [
@@ -155,7 +163,7 @@ function SleepCard({ s, score, official }: { s: SleepDetails; score: number | nu
         <div>
           {phases.map((p) => (
             <div key={p.k} className="flex items-baseline gap-1.5 border-b border-dotted border-sep py-1.5">
-              <span className="flex-1 text-[16px] font-semibold" style={{ color: p.k === "deep" ? "var(--stage-deep-text)" : STAGE_COLOR[p.k] }}>{p.n}</span>
+              <span className="flex-1 text-[16px] font-semibold" style={{ color: STAGE_TEXT[p.k] }}>{p.n}</span>
               <span className="whitespace-nowrap text-[16px] font-semibold tabular-nums">{fmtHM(p.v)}</span>
             </div>
           ))}
@@ -172,8 +180,8 @@ function SleepCard({ s, score, official }: { s: SleepDetails; score: number | nu
       </div>
       <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
         {phases.map((p) => {
-          const q = p.q ? QUAL[p.q] : null;
-          return q ? <Sm key={p.k}>{p.n} : <span style={{ color: q[1], fontWeight: 600 }}>{q[0]}</span></Sm> : null;
+          const q = p.q ? (p.k === "awake" ? QUAL_AWAKE : QUAL)[p.q] : null;
+          return q ? <Sm key={p.k}>{p.k === "awake" ? "Réveils" : p.n} : <span style={{ color: q[1], fontWeight: 600 }}>{q[0]}</span></Sm> : null;
         })}
       </div>
     </Card>
@@ -228,7 +236,7 @@ function TonightCard({ s, official }: { s: SleepDetails; official: number | null
 }
 
 export function Sommeil() {
-  const { fit, det } = useHealth();
+  const { fit, det, fitQ } = useHealth();
   const series = fit?.series ?? [];
   const latest = lastWith(series, "sleep_score") ?? series[series.length - 1];
   const s = det?.sleep ?? null;
@@ -240,6 +248,7 @@ export function Sommeil() {
   const title = latest?.sleep_score == null ? "Ton sommeil" : latest.sleep_score >= 80 ? "Une bonne nuit" : dur != null && dur < 6 * 3600 ? "Nuit courte" : latest.sleep_score >= 60 ? "Une nuit correcte" : "Une nuit agitée";
   const deepOk = s?.qualifiers.deepPercentage === "EXCELLENT" || s?.qualifiers.deepPercentage === "GOOD";
   const b0 = s?.bedtime_start_min;
+  if (fitQ.failed) return <Page tint="indigo"><LonChips current="sommeil" /><Guard queries={[fitQ]}>{null}</Guard></Page>;
   return (
     <Page tint="indigo">
       <LonChips current="sommeil" />
@@ -248,7 +257,7 @@ export function Sommeil() {
         {b0 != null ? `Un coucher entre ${minToClock(b0)} et ${minToClock(s?.bedtime_end_min ?? b0 + 50)} ce soir aidera ta VFC à rester dans ta plage.` : ""}
       </Hero>
       {!fit ? (
-        <Stagger><Skel h={420} /></Stagger>
+        <Guard queries={[fitQ]}><Stagger><Skel h={420} /></Stagger></Guard>
       ) : (
         <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2">
           {s && <SleepCard s={s} score={latest?.sleep_score ?? null} official={latest?.date === s.date ? dur : null} />}
@@ -277,12 +286,60 @@ export function Sommeil() {
 }
 
 /* =========================== Forme et santé =========================== */
+/** Seuils : valeurs de la montre, résultat du dernier test de terrain, et choix de celui qui sert de repère. */
+function ThresholdsCard({ t }: { t: Thresholds }) {
+  const { bump } = useDataVersion();
+  const [busy, setBusy] = useState(false);
+  const test = t.test ?? null;
+  const fromTest = t.source === "test";
+  const choose = async (source: "garmin" | "test") => {
+    setBusy(true);
+    try {
+      await api.setThresholdSource(source);
+      bump();
+      toast.success(source === "test" ? "Seuil du test adopté" : "Seuil de la montre repris", { description: "Les repères d'allure et de FC suivent ce choix." });
+    } catch (e) {
+      toast.error("Changement impossible", { description: e instanceof Error ? e.message : "" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const pace = (ms?: number | null) => (ms ? `${fmtPace(ms)} /km` : "—");
+  return (
+    <Card>
+      <div className="flex items-center justify-between"><Lbl>Mes seuils</Lbl><Badge tone={fromTest ? "indigo" : "gray"}>{fromTest ? "Test de terrain" : "Montre"}</Badge></div>
+      <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-3.5">
+        <div><Sm>Allure seuil</Sm><Val>{pace(t.lt_speed_ms)}</Val></div>
+        <div><Sm>FC seuil</Sm><Val>{t.lthr_bpm != null ? `${nf(t.lthr_bpm)} BPM` : "—"}</Val></div>
+        <div><Sm>Puissance seuil course</Sm><Val>{t.run_ftp_w != null ? `${nf(t.run_ftp_w)} W` : "—"}</Val>{t.run_wkg != null && <Sm>{nf(t.run_wkg, 2)} W/kg</Sm>}</div>
+        <div><Sm>FTP vélo</Sm><Val>{t.bike_ftp_w != null ? `${nf(t.bike_ftp_w)} W` : "—"}</Val>{t.bike_ftp_stale ? <Sm style={{ color: "var(--warn)" }}>À mettre à jour</Sm> : null}</div>
+        <div><Sm>FC max.</Sm><Val>{t.max_hr_bpm != null ? `${nf(t.max_hr_bpm)} BPM` : "—"}</Val></div>
+      </div>
+      {t.lt_date && <Sm className="mt-3">{fromTest ? "Test du" : "Mesure de la montre du"} {shortDay(t.lt_date).replace(/\.$/, "")}</Sm>}
+      {test && (
+        <>
+          <Hr />
+          <a href={`#/activity/${test.activity_id}`} className="hk-press block">
+            <Lbl more>Test de 30 min · {shortDay(test.date).replace(/\.$/, "")}</Lbl>
+            <Val>{pace(test.speed_ms)}{test.lthr_bpm != null ? ` · ${test.lthr_bpm} BPM` : ""}</Val>
+            <Sm>{nf(test.distance_m / 1000, 2)} km en 30 min · montre : {pace(t.garmin_lt_speed_ms)}{t.garmin_lthr_bpm != null ? ` · ${nf(t.garmin_lthr_bpm)} BPM` : ""}</Sm>
+          </a>
+          <button type="button" disabled={busy} onClick={() => choose(fromTest ? "garmin" : "test")} className="hk-press mt-3 h-11 w-full rounded-full bg-fill text-[15px] font-semibold disabled:opacity-50">
+            {fromTest ? "Revenir au seuil de la montre" : "Adopter le seuil du test"}
+          </button>
+        </>
+      )}
+    </Card>
+  );
+}
+
 export function Forme() {
-  const { fit, det } = useHealth();
+  const { fit, det, fitQ } = useHealth();
   const th = useQuery("thresholds", () => api.thresholds());
   const [day, setDay] = useState(0);
   const series = fit?.series ?? [];
   const latest = fit?.latest ?? null;
+  if (fitQ.failed) return <Page tint="pink"><LonChips current="forme" /><Guard queries={[fitQ]}>{null}</Guard></Page>;
   const rhrBand = personalBand(series, "resting_hr", 30);
   const bpm = latest?.resting_hr ?? null;
   const beat = `${60 / Math.max(bpm ?? 60, 30)}s`;
@@ -318,7 +375,7 @@ export function Forme() {
         {age != null && real != null ? `Ton âge physique a ${nf(real - age, 1)} ans de moins que ton âge réel.` : ""}
       </Hero>
       {!fit ? (
-        <Stagger><Skel h={300} /></Stagger>
+        <Guard queries={[fitQ]}><Stagger><Skel h={300} /></Stagger></Guard>
       ) : (
         <div className="hk-stagger grid items-start gap-3.5 lg:grid-cols-2">
           {heart && (
@@ -326,7 +383,7 @@ export function Forme() {
               <div className="flex items-center justify-between gap-2">
                 <Lbl>{dayName(heart.date)}, heure par heure</Lbl>
                 {hdays.length > 1 && (
-                  <div role="group" aria-label="Jour" className="flex h-9 gap-0.5 rounded-full bg-fill p-0.5">
+                  <div role="group" aria-label="Jour" className="flex h-11 gap-0.5 rounded-full bg-fill p-1">
                     {hdays.map((h) => (dayName(h.date) === "Aujourd'hui" ? "Auj." : dayName(h.date))).map((l, i) => (
                       <button key={l} type="button" aria-pressed={day === i} onClick={() => setDay(i)} className="hk-seg whitespace-nowrap rounded-full px-3 text-[13px] font-semibold">
                         {l}
@@ -336,11 +393,12 @@ export function Forme() {
                 )}
               </div>
               <Val>{heart.min != null && heart.max != null ? `${heart.min}–${heart.max} BPM` : "—"}</Val>
+              {heart.date === isoDate(new Date()) && <MeasuredAt at={fit.measured_at} />}
               <div className="mt-2.5"><HourRanges hours={heart.hours} label={`Fréquence cardiaque heure par heure, de ${heart.min} à ${heart.max} BPM`} /></div>
               <Hr />
               <div className="grid grid-cols-2 gap-3">
-                <div><Sm style={{ color: "#C4002B", fontWeight: 600 }}>FC au repos</Sm><Val>{heart.resting != null ? `${heart.resting} BPM` : "—"}</Val><Sm>Moy. 7 j : {heart.resting_7d ?? "—"}</Sm></div>
-                <div><Sm style={{ color: "#C4002B", fontWeight: 600 }}>Pendant le sommeil</Sm><Val>{det?.sleep?.avg_hr != null ? `${det.sleep.avg_hr} BPM` : "—"}</Val><Sm>Dernière nuit</Sm></div>
+                <div><Sm style={{ color: "var(--pink-text)", fontWeight: 600 }}>FC au repos</Sm><Val>{heart.resting != null ? `${heart.resting} BPM` : "—"}</Val><Sm>Moy. 7 j : {heart.resting_7d ?? "—"}</Sm></div>
+                <div><Sm style={{ color: "var(--pink-text)", fontWeight: 600 }}>Pendant le sommeil</Sm><Val>{det?.sleep?.avg_hr != null ? `${det.sleep.avg_hr} BPM` : "—"}</Val><Sm>Dernière nuit</Sm></div>
               </div>
             </Card>
           )}
@@ -385,19 +443,7 @@ export function Forme() {
               })()}
             </Card>
           )}
-          {t?.available && (
-            <Card>
-              <Lbl>Mes seuils</Lbl>
-              <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-3.5">
-                <div><Sm>Allure seuil</Sm><Val>{t.lt_pace ?? "—"}</Val></div>
-                <div><Sm>FC seuil</Sm><Val>{t.lthr_bpm != null ? `${nf(t.lthr_bpm)} BPM` : "—"}</Val></div>
-                <div><Sm>Puissance seuil course</Sm><Val>{t.run_ftp_w != null ? `${nf(t.run_ftp_w)} W` : "—"}</Val>{t.run_wkg != null && <Sm>{nf(t.run_wkg, 2)} W/kg</Sm>}</div>
-                <div><Sm>FTP vélo</Sm><Val>{t.bike_ftp_w != null ? `${nf(t.bike_ftp_w)} W` : "—"}</Val>{t.bike_ftp_stale ? <Sm style={{ color: "var(--warn)" }}>À mettre à jour</Sm> : null}</div>
-                <div><Sm>FC max.</Sm><Val>{t.max_hr_bpm != null ? `${nf(t.max_hr_bpm)} BPM` : "—"}</Val></div>
-              </div>
-              {t.lt_date && <><Hr /><P>Mesuré le {shortDay(t.lt_date).replace(/\.$/, "")}, un test de seuil le met à jour.</P></>}
-            </Card>
-          )}
+          {t?.available && <ThresholdsCard t={t} />}
         </div>
       )}
     </Page>
