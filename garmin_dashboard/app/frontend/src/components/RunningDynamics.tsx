@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Eye } from "lucide-react";
 import { InfoTip } from "@/components/common";
 import type { ActivityDetail } from "@/lib/api";
 import { balanceInfo, mean, nf, signed } from "@/lib/format";
-import { C } from "@/lib/palette";
+import { alpha, C } from "@/lib/palette";
 import { drift, type Prepared } from "@/lib/series";
 
 function Tile({ label, value, unit, sub }: { label: string; value: string; unit: string; sub?: string }) {
@@ -27,8 +27,8 @@ function BalanceBar({ left }: { left: number }) {
   return (
     <div>
       <div className="relative h-3 rounded-full bg-foreground/[0.07]" role="img" aria-label={`Temps de contact : ${nf(left, 1)} % gauche, ${nf(100 - left, 1)} % droite`}>
-        <div className="absolute inset-y-0 rounded-full bg-[#FF9F0A]/25" style={{ left: "37.5%", width: "25%" }} />
-        <div className="absolute inset-y-0 rounded-full bg-[#30D158]/30" style={{ left: "42.5%", width: "15%" }} />
+        <div className="absolute inset-y-0 rounded-full bg-[var(--sys-orange)]/25" style={{ left: "37.5%", width: "25%" }} />
+        <div className="absolute inset-y-0 rounded-full bg-[var(--sys-green)]/30" style={{ left: "42.5%", width: "15%" }} />
         <div className="absolute inset-y-[-3px] left-1/2 w-px bg-foreground/40" />
         <div
           className="absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-background shadow-lg"
@@ -64,7 +64,7 @@ export function RunningDynamics({ a, prep }: { a: ActivityDetail; prep: Prepared
       {info && left != null ? (
         <div
           className="rounded-2xl border p-4"
-          style={{ borderColor: `${info.color}55`, background: `${info.color}12` }}
+          style={{ borderColor: alpha(info.color, 33), background: alpha(info.color, 7) }}
           role={info.level === "alert" ? "alert" : undefined}
         >
           <div className="mb-3 flex items-start gap-2.5">

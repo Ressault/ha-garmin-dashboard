@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useChart } from "@/hooks/useChart";
 import type { EChartsInstance, Opt } from "@/lib/echarts";
 import { sportGroup, type SportGroup } from "@/lib/format";
-import { C } from "@/lib/palette";
+import { alpha, C } from "@/lib/palette";
 import { cn } from "@/lib/utils";
 
 /* ---------- Contrôle segmenté (pastille qui glisse : transform uniquement) ---------- */
@@ -112,7 +112,7 @@ export function Delta({
   return (
     <span
       className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold", className)}
-      style={{ color, background: `${color}22` }}
+      style={{ color, background: alpha(color, 13) }}
     >
       {!flat && (
         <span aria-hidden className="text-[9px] leading-none">
@@ -129,7 +129,7 @@ export function StatusPill({ color, children, className }: { color: string; chil
   return (
     <span
       className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap", className)}
-      style={{ color, background: `${color}24` }}
+      style={{ color, background: alpha(color, 14) }}
     >
       <span className="size-1.5 rounded-full" style={{ background: color }} />
       {children}
@@ -197,7 +197,7 @@ export function SportTile({ type, className }: { type: string | null | undefined
     <span
       aria-hidden
       className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", className)}
-      style={{ background: `${color}26`, color }}
+      style={{ background: alpha(color, 15), color }}
     >
       <Icon className="size-[19px]" strokeWidth={2.2} />
     </span>
@@ -249,8 +249,8 @@ export function EmptyState({
 
 export function QueryError({ error, onRetry }: { error: Error; onRetry: () => void }) {
   return (
-    <div role="alert" className="flex items-start gap-3 rounded-2xl border border-[#FF453A]/30 bg-[#FF453A]/10 p-4">
-      <TriangleAlert className="mt-0.5 size-5 shrink-0 text-[#FF453A]" />
+    <div role="alert" className="flex items-start gap-3 rounded-2xl border border-[var(--sys-red)]/30 bg-[var(--sys-red)]/10 p-4">
+      <TriangleAlert className="mt-0.5 size-5 shrink-0 text-[var(--sys-red)]" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">Données indisponibles</p>
         <p className="text-muted-foreground mt-0.5 text-sm">{error.message}</p>

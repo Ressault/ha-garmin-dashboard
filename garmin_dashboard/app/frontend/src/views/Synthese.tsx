@@ -59,8 +59,8 @@ function ReadinessCard({ series, next }: { series: FitnessDay[]; next: string | 
   const Row = ({ ok, name, detail, label }: { ok: boolean; name: string; detail: string; label: string }) => (
     <div className="flex items-center gap-2.5 text-[15px]">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="shrink-0">
-        <circle cx="10" cy="10" r="10" fill={ok ? "#3E8EF7" : "#FF9500"} />
-        {ok ? <path d="M5.5 10.2l3 3 6-6.2" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /> : <path d="M10 5v6.2M10 14.6v.4" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />}
+        <circle cx="10" cy="10" r="10" fill={ok ? "var(--c-sky)" : "var(--sys-orange)"} />
+        {ok ? <path d="M5.5 10.2l3 3 6-6.2" fill="none" stroke="var(--on-color)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /> : <path d="M10 5v6.2M10 14.6v.4" stroke="var(--on-color)" strokeWidth="2.4" strokeLinecap="round" />}
       </svg>
       <span className="flex-1">
         {name} <span className="text-label2">· {detail}</span>
@@ -128,7 +128,7 @@ function GoalCard() {
       <Val size={22}>{p.goal_name ?? p.name}</Val>
       <Lbl>{parseDay(p.goal_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</Lbl>
       <div className="mt-3.5 h-2 rounded-full bg-fill2">
-        <div className="h-2 rounded-full bg-[#34C759]" style={{ width: `${Math.min(100, Math.max(2, (weekN / weeksTot) * 100))}%` }} />
+        <div className="h-2 rounded-full bg-[var(--sys-green)]" style={{ width: `${Math.min(100, Math.max(2, (weekN / weeksTot) * 100))}%` }} />
       </div>
       <Sm className="mt-1.5">
         Semaine {Math.max(1, Math.min(weekN, weeksTot))} sur {weeksTot}
@@ -278,17 +278,6 @@ export function HeartWidget({ latest, today, measuredAt }: { latest: FitnessDay;
           <BigHeart id="hw" />
         </div>
       </div>
-      <Hr />
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Sm>Repos · moy. 7 j</Sm>
-          <Val size={18}>{today?.resting_7d != null ? `${today.resting_7d} BPM` : "—"}</Val>
-        </div>
-        <div>
-          <Sm>VO₂ max</Sm>
-          <Val size={18}>{latest.vo2max != null ? nf(latest.vo2max, 1) : "—"}</Val>
-        </div>
-      </div>
     </Card>
   );
 }
@@ -304,7 +293,7 @@ function BodyBattery({ latest, points, measuredAt }: { latest: FitnessDay; point
         </div>
         <div className="text-right">
           <Sm><span aria-hidden className="mr-1 inline-block size-2 rounded-full bg-[var(--sys-teal)] align-[1px]" />Recharge cette nuit</Sm>
-          <Val size={17} style={{ color: "#0E7C93" }}>
+          <Val size={17} style={{ color: "var(--teal-text)" }}>
             {latest.body_battery_charged != null ? `+${nf(latest.body_battery_charged)}` : "—"}
           </Val>
           <Sm className="mt-1"><span aria-hidden className="mr-1 inline-block size-2 rounded-full bg-[var(--sys-teal)] align-[1px] opacity-35" />Dépensé depuis le réveil</Sm>

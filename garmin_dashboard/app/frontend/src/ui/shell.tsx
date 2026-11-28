@@ -165,7 +165,7 @@ export function TabBar({ route }: { route: Route }) {
       <span aria-hidden ref={drop} className="hk-drop" />
       {TABS.map(({ key, label, href, Icon }) => (
         <a key={key} href={href} className="hk-tab hk-press" aria-current={sec === key ? "page" : undefined}>
-          <span style={{ color: sec === key ? "#0A84FF" : "currentColor" }}>
+          <span style={{ color: sec === key ? "var(--sys-blue)" : "currentColor" }}>
             <Icon size={24} />
           </span>
           {label}
@@ -197,7 +197,7 @@ export function Sidebar({ route }: { route: Route }) {
       <nav aria-label="Navigation principale" className="flex flex-col gap-0.5">
         {TABS.map(({ key, label, href, Icon }) => (
           <a key={key} href={href} aria-current={sec === key && (key === "synthese" ? route.name === "synthese" : false) ? "page" : undefined}>
-            <span style={{ color: sec === key ? "#0A84FF" : "currentColor" }}>
+            <span style={{ color: sec === key ? "var(--sys-blue)" : "currentColor" }}>
               <Icon size={18} />
             </span>
             {label}
@@ -206,17 +206,17 @@ export function Sidebar({ route }: { route: Route }) {
       </nav>
       <p className="mx-2.5 mt-4 mb-1.5 text-[13px] font-semibold text-label2">Longévité</p>
       <nav aria-label="Longévité" className="flex flex-col gap-0.5">
-        <a href={PATH.piliers} aria-current={cur("piliers")}>{dot("#34C759")}Mes piliers</a>
-        <a href={PATH.sommeil} aria-current={cur("sommeil")}>{dot("#5E6BFF")}Sommeil</a>
-        <a href={PATH.forme} aria-current={cur("forme")}>{dot("#FF375F")}Forme et santé</a>
+        <a href={PATH.piliers} aria-current={cur("piliers")}>{dot("var(--sys-green)")}Mes piliers</a>
+        <a href={PATH.sommeil} aria-current={cur("sommeil")}>{dot("var(--c-iris)")}Sommeil</a>
+        <a href={PATH.forme} aria-current={cur("forme")}>{dot("var(--sys-pink)")}Forme et santé</a>
       </nav>
       <p className="mx-2.5 mt-4 mb-1.5 text-[13px] font-semibold text-label2">Activité</p>
       <nav aria-label="Activité" className="flex flex-col gap-0.5">
-        <a href={PATH.activites} aria-current={cur("activites") ?? (route.name === "activity" ? "page" : undefined)}>{dot("#FF375F")}Activités</a>
-        <a href={PATH.progres} aria-current={cur("progres")}>{dot("#AF52DE")}Progrès</a>
-        <a href={PATH.entrainement} aria-current={cur("entrainement")}>{dot("#FFB800")}Entraînement</a>
-        <a href={PATH.records} aria-current={cur("records")}>{dot("#F5C33B")}Records</a>
-        <a href={PATH.plan} aria-current={cur("plan")}>{dot("#30B0C7")}Programme</a>
+        <a href={PATH.activites} aria-current={cur("activites") ?? (route.name === "activity" ? "page" : undefined)}>{dot("var(--sys-pink)")}Activités</a>
+        <a href={PATH.progres} aria-current={cur("progres")}>{dot("var(--sys-purple)")}Progrès</a>
+        <a href={PATH.entrainement} aria-current={cur("entrainement")}>{dot("var(--c-amber)")}Entraînement</a>
+        <a href={PATH.records} aria-current={cur("records")}>{dot("var(--c-gold)")}Records</a>
+        <a href={PATH.plan} aria-current={cur("plan")}>{dot("var(--sys-teal)")}Programme</a>
       </nav>
       <div className="mt-auto flex gap-2 pt-4">
         <SyncButton wide />

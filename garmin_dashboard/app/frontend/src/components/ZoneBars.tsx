@@ -1,8 +1,9 @@
 import { fmtHM, nf, ZONE_META } from "@/lib/format";
+import { ZONE_COLORS } from "@/lib/palette";
 import type { HrZone } from "@/lib/api";
 
 /** Mêmes couleurs que la carte « Zones de FC » de l'onglet Entraînement */
-const ZCOL = ["#30B0C7", "#34C759", "#FFB800", "#FF6B2C", "#FF3B30"];
+const ZCOL = ZONE_COLORS;
 
 /** Répartition du temps par zone de FC : une ligne par zone, de la plus intense à la plus douce (comme Apple Forme). */
 export function ZoneBars({ zones }: { zones: HrZone[] }) {

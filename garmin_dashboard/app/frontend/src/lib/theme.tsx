@@ -16,11 +16,12 @@ function initial(): ThemeMode {
 }
 
 function apply(mode: ThemeMode) {
-  applyPalette(mode);
   const root = document.documentElement;
   root.classList.toggle("dark", mode === "dark");
   root.style.colorScheme = mode;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", mode === "dark" ? "#000000" : "#f2f2f7");
+  applyPalette(mode); // après la classe : les valeurs des jetons se lisent dans le thème en place
+  const bg = getComputedStyle(root).getPropertyValue("--background").trim();
+  if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
 }
 
 // Appliqué dès l'import, avant le premier rendu (les couleurs des graphiques en dépendent)

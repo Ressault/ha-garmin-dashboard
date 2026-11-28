@@ -4,13 +4,14 @@ import { toast } from "sonner";
 import { useDataVersion, useQuery } from "@/hooks/useQuery";
 import { api, type PlanDetail, type PlanInput, type PlanSession, type Race } from "@/lib/api";
 import { dayLabel, nf, parseDay, shortDay } from "@/lib/format";
+import { alpha } from "@/lib/palette";
 import { downloadText, PLAN_TYPES, parsePlanFile, templateCsv, templateJson } from "@/lib/plan-import";
 import { Badge, Card, H2, Hr, Lbl, Sm, Skel, Val } from "@/ui/kit";
 import { Guard } from "@/ui/status";
-import { Frame } from "@/views/Activite";
+import { Frame } from "@/views/activite";
 
-const TYPE_COLOR: Record<string, string> = { endurance: "#34C759", seuil: "#FF375F", relance: "#FF9F0A", longue: "#3E8EF7", test: "#AF52DE", repos: "#8E8E93", course: "#FF453A" };
-const typeColor = (t: string) => TYPE_COLOR[t] ?? TYPE_COLOR[({ run: "endurance", easy: "endurance", long: "longue", tempo: "seuil", threshold: "seuil", interval: "seuil", intervals: "seuil", rest: "repos", race: "course" } as Record<string, string>)[t.toLowerCase()] ?? ""] ?? "#8E8E93";
+const TYPE_COLOR: Record<string, string> = { endurance: "var(--sys-green)", seuil: "var(--sys-pink)", relance: "var(--sys-orange)", longue: "var(--c-sky)", test: "var(--sys-purple)", repos: "var(--c-gray)", course: "var(--sys-red)" };
+const typeColor = (t: string) => TYPE_COLOR[t] ?? TYPE_COLOR[({ run: "endurance", easy: "endurance", long: "longue", tempo: "seuil", threshold: "seuil", interval: "seuil", intervals: "seuil", rest: "repos", race: "course" } as Record<string, string>)[t.toLowerCase()] ?? ""] ?? "var(--c-gray)";
 const EN_TYPES: Record<string, string> = { run: "Course", easy: "Footing", long: "Sortie longue", tempo: "Seuil", threshold: "Seuil", interval: "Fractionné", intervals: "Fractionné", hill: "Côtes", hills: "Côtes", rest: "Repos", race: "Course", recovery: "Récupération", strength: "Renforcement" };
 const typeLabel = (t: string) => PLAN_TYPES[t] ?? EN_TYPES[t.toLowerCase()] ?? t.charAt(0).toUpperCase() + t.slice(1);
 // Couleurs de texte : les teintes vives sont réservées aux formes, le texte prend leur version lisible (≥ 4,5:1)
@@ -20,10 +21,10 @@ const STATUS: Record<string, { l: string; c: string } | undefined> = {
 const BPM = (t: string) => t.replace(/\bbpm\b/g, "BPM");
 const addDays = (iso: string, n: number) => { const d = parseDay(iso); d.setDate(d.getDate() + n); return d.toLocaleDateString("sv-SE"); };
 
-const btn = "hk-press h-11 rounded-full bg-[#1f8a3a] px-5 text-[15px] font-semibold text-white disabled:opacity-40";
+const btn = "hk-press h-11 rounded-full bg-[var(--ok-fill)] px-5 text-[15px] font-semibold text-white disabled:opacity-40";
 const btn2 = "hk-press h-11 rounded-full bg-fill px-5 text-[15px] font-semibold text-foreground disabled:opacity-40";
 const link = "hk-press min-h-11 font-semibold text-[var(--ok)]";
-const field = "h-12 w-full rounded-xl bg-fill px-3 text-[16px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]/60";
+const field = "h-12 w-full rounded-xl bg-fill px-3 text-[16px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[var(--sys-blue)]/60";
 
 /* ---------- Import ---------- */
 function Import({ onCreated, onCancel }: { onCreated: (id: number) => void; onCancel?: () => void }) {
@@ -95,7 +96,7 @@ function Session({ s, today, race }: { s: PlanSession; today: string; race?: Rac
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-[13px] text-label2">
           <span>{dayLabel(s.date)}</span>
-          <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold text-foreground" style={{ background: `${c}22` }}><span aria-hidden className="size-2 rounded-full" style={{ background: c }} />{typeLabel(s.type)}</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold text-foreground" style={{ background: alpha(c, 13) }}><span aria-hidden className="size-2 rounded-full" style={{ background: c }} />{typeLabel(s.type)}</span>
           {s.date === today && !st && <span className="font-semibold text-[var(--blue-text)]">Aujourd'hui</span>}
           {st && <span className="ml-auto font-semibold" style={{ color: st.c }}>{st.l}</span>}
         </div>
@@ -199,7 +200,7 @@ function Body({ d, onDeleted }: { d: PlanDetail; onDeleted: () => void }) {
         {confirm ? (
           <div className="flex flex-wrap items-center gap-2">
             <Sm className="flex-1">Supprimer « {d.name} » ? Tes sorties Garmin ne sont pas touchées.</Sm>
-            <button className="hk-press h-11 rounded-full bg-[#d70015] px-5 text-[15px] font-semibold text-white disabled:opacity-40" disabled={busy} onClick={remove}>Supprimer</button>
+            <button className="hk-press h-11 rounded-full bg-[var(--bad-fill)] px-5 text-[15px] font-semibold text-white disabled:opacity-40" disabled={busy} onClick={remove}>Supprimer</button>
             <button className={btn2} disabled={busy} onClick={() => setConfirm(false)}>Annuler</button>
           </div>
         ) : (

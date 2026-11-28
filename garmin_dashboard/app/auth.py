@@ -12,7 +12,6 @@ import hmac
 import os
 import secrets
 import time
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel

@@ -6,17 +6,17 @@ import { useScrubNav } from "./scrub";
 /* Briques visuelles de la refonte « Apple Santé » */
 
 export const TINT = {
-  blue: "#3E62FF",
-  sky: "#3E8EF7",
-  pink: "#FF375F",
-  red: "#FF2D55",
-  green: "#34C759",
-  teal: "#00B8A9",
-  cyan: "#30B0C7",
-  indigo: "#5E6BFF",
-  purple: "#AF52DE",
-  orange: "#FF9F0A",
-  gold: "#F5C33B",
+  blue: "var(--c-royal)",
+  sky: "var(--c-sky)",
+  pink: "var(--sys-pink)",
+  red: "var(--sys-pink)",
+  green: "var(--sys-green)",
+  teal: "var(--c-mint)",
+  cyan: "var(--sys-teal)",
+  indigo: "var(--c-iris)",
+  purple: "var(--sys-purple)",
+  orange: "var(--sys-orange)",
+  gold: "var(--c-gold)",
 } as const;
 
 type Tint = keyof typeof TINT;
@@ -62,7 +62,7 @@ export function Card({ tint, href, children, className, label, as }: { tint?: Ti
 }
 
 export const Chev = () => (
-  <span aria-hidden className="font-semibold text-[#C4C4C7]">
+  <span aria-hidden className="font-semibold text-[var(--label4)]">
     {" ›"}
   </span>
 );

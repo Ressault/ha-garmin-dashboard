@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "rea
 import L from "leaflet";
 
 import { fmtPace, nf } from "@/lib/format";
-import { heatColor } from "@/lib/palette";
+import { heatColor, heatGradient, token } from "@/lib/palette";
 import { indexAtDistance, range90, type Prepared } from "@/lib/series";
 
 export type MapMode = "pace" | "hr";
@@ -107,9 +107,9 @@ export const TrackMap = forwardRef<TrackMapHandle, Props>(function TrackMap({ tr
     layerRef.current = L.layerGroup().addTo(map);
     markerRef.current = L.circleMarker([0, 0], {
       radius: 7,
-      color: "#ffffff",
+      color: token("--on-color"),
       weight: 3,
-      fillColor: "#0A84FF",
+      fillColor: token("--map-track"),
       fillOpacity: 1,
       interactive: false,
     });
@@ -130,7 +130,7 @@ export const TrackMap = forwardRef<TrackMapHandle, Props>(function TrackMap({ tr
     const layer = layerRef.current;
     if (!map || !layer || geo.latlngs.length < 2) return;
     layer.clearLayers();
-    L.polyline(geo.latlngs, { color: "#000000", weight: 9, opacity: 0.55, lineCap: "round", lineJoin: "round", interactive: false }).addTo(layer);
+    L.polyline(geo.latlngs, { color: token("--map-outline"), weight: 9, opacity: 0.55, lineCap: "round", lineJoin: "round", interactive: false }).addTo(layer);
     if (coloring) {
       const { values, lo, hi } = coloring;
       for (let i = 0; i < geo.latlngs.length - 1; i++) {
@@ -146,12 +146,12 @@ export const TrackMap = forwardRef<TrackMapHandle, Props>(function TrackMap({ tr
         }).addTo(layer);
       }
     } else {
-      L.polyline(geo.latlngs, { color: "#0A84FF", weight: 5, lineCap: "round", lineJoin: "round", interactive: false }).addTo(layer);
+      L.polyline(geo.latlngs, { color: token("--map-track"), weight: 5, lineCap: "round", lineJoin: "round", interactive: false }).addTo(layer);
     }
     const start = geo.latlngs[0];
     const end = geo.latlngs[geo.latlngs.length - 1];
-    L.circleMarker(start, { radius: 6, color: "#fff", weight: 2.5, fillColor: "#30D158", fillOpacity: 1, interactive: false }).addTo(layer);
-    L.circleMarker(end, { radius: 6, color: "#fff", weight: 2.5, fillColor: "#FF453A", fillOpacity: 1, interactive: false }).addTo(layer);
+    L.circleMarker(start, { radius: 6, color: token("--on-color"), weight: 2.5, fillColor: token("--map-start"), fillOpacity: 1, interactive: false }).addTo(layer);
+    L.circleMarker(end, { radius: 6, color: token("--on-color"), weight: 2.5, fillColor: token("--map-end"), fillOpacity: 1, interactive: false }).addTo(layer);
     map.fitBounds(L.latLngBounds(geo.latlngs), { padding: [28, 28] });
   }, [geo, coloring]);
 
@@ -220,7 +220,7 @@ export const TrackMap = forwardRef<TrackMapHandle, Props>(function TrackMap({ tr
           <span>{mode === "pace" ? legend.hi : legend.lo}</span>
           <span
             className="h-1.5 w-20 rounded-full"
-            style={{ background: "linear-gradient(90deg,#5E5CE6,#0A84FF,#30D158,#FFD60A,#FF9F0A,#FF453A)" }}
+            style={{ background: heatGradient() }}
           />
           <span>{mode === "pace" ? legend.lo : legend.hi}</span>
         </div>

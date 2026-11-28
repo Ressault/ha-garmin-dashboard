@@ -91,7 +91,7 @@ export const ActivityChart = forwardRef<ActivityChartHandle, { prep: Prepared; o
             yAxisIndex: i,
             data: data.x.map((x, k) => [x, data.alt[k]]),
             lineStyle: { width: 1.5, color: C.gray },
-            areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(142,142,147,0.38)" }, { offset: 1, color: "rgba(142,142,147,0.02)" }] } },
+            areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "var(--ghost-hi)" }, { offset: 1, color: "var(--ghost-lo)" }] } },
           });
         } else if (r.key === "hr") {
           yAxes.push({ ...yBase, type: "value", gridIndex: i, scale: true, axisLabel: { ...axisText, formatter: (v: number) => `${nf(v)}` } });

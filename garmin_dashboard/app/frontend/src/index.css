@@ -327,11 +327,43 @@ input.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(10 1
   --sys-red: #ff3b30; --sys-orange: #ff9500; --sys-green: #34c759; --sys-teal: #30b0c7;
   --sys-blue: #007aff; --sys-indigo: #5856d6; --sys-purple: #af52de; --sys-pink: #ff2d55;
   --stage-deep-text: #3a2fa8; --stage-awake-text: #b23a21; --stage-rem-text: #0b7285; --stage-light-text: #2f4fe0;
+  /* ---------- Palette des données : seul endroit où ces couleurs sont écrites ---------- */
+  --sys-cyan: #32ade6; --sys-yellow: #ffcc00;
+  --c-sky: #3e8ef7; --c-sky-soft: #64b5ff; --c-royal: #3e62ff; --c-royal-soft: #8fa8f5; --c-iris: #5e6bff;
+  --c-mint: #00b8a9; --c-mint-deep: #00a99a; --c-mint-soft: #b5e8e2;
+  --c-gold: #f5c33b; --c-amber: #ffb800; --c-ember: #ff6b2c; --c-gray: #8e8e93;
+  --label4: #c4c4c7; --on-color: #ffffff; --teal-text: #0e7c93; --ok-fill: #1f8a3a; --bad-fill: #d70015; --seg-on: #636366;
+  /* zones de FC, de la plus basse à la plus haute */
+  --zone-1: var(--sys-teal); --zone-2: var(--sys-green); --zone-3: var(--c-amber); --zone-4: var(--c-ember); --zone-5: var(--sys-red);
+  /* sports */
+  --sport-foot: var(--sys-pink); --sport-road: var(--sys-blue); --sport-mtb: var(--sys-orange); --sport-walk: var(--sys-green); --sport-gym: var(--sys-purple); --sport-other: var(--c-gray);
+  /* phases de sommeil (formes) */
+  --stage-awake: #ff836b; --stage-rem: #2eb8d6; --stage-light: var(--c-royal); --stage-deep: #3a2fa8;
+  /* médailles des records : fond et texte */
+  --medal-1: var(--c-gold); --medal-1-fg: #7a5600; --medal-2: #c9cdd6; --medal-2-fg: #4a4f5a; --medal-3: #e3a574; --medal-3-fg: #6b3a12;
+  /* dégradé allure / FC du tracé (lent → rapide) : interpolé par calcul dans lib/palette.ts */
+  --heat-0: #5e5ce6; --heat-1: #0a84ff; --heat-2: #30d158; --heat-3: #ffd60a; --heat-4: #ff9f0a; --heat-5: #ff453a;
+  --map-outline: #000000; --map-track: #0a84ff; --map-start: #30d158; --map-end: #ff453a;
+  /* illustrations (pictogrammes, avatar, cœur) */
+  --avatar-a: #7ab8ff; --avatar-b: #b48cf2;
+  --ico-iris-hi: #8b94ff; --ico-pink-hi: #ff5c7e; --ico-purple-hi: #c984f5; --ico-green-hi: #4be06e; --ico-green-lo: #23a843; --ico-orange-hi: #ffc247;
+  --heart-1: #ff9aab; --heart-2: #ff4467; --heart-3: #e3224a;
+  /* graphiques ECharts : neutres */
+  --chart-muted: #aeaeb2; --chart-grid: rgb(0 0 0 / 0.07); --chart-pointer: rgb(0 0 0 / 0.3); --chart-faint: rgb(0 0 0 / 0.05);
+  --tip-bg: rgb(255 255 255 / 0.96); --tip-border: rgb(0 0 0 / 0.1); --tip-shadow: rgb(0 0 0 / 0.18);
+  --ghost: rgb(142 142 147 / 0.22); --ghost-hi: rgb(142 142 147 / 0.38); --ghost-lo: rgb(142 142 147 / 0.02);
+  --seg-walk: rgb(255 159 10 / 0.45); --seg-stop: rgb(142 142 147 / 0.55);
+  /* ombres et voiles */
+  --sh-soft: rgb(0 0 0 / 0.14); --sh-mid: rgb(0 0 0 / 0.25); --sh-inset: rgb(0 0 0 / 0.12); --sh-avatar: rgb(40 60 140 / 0.4); --scrim: rgb(0 0 0 / 0.58);
 }
 .dark {
   --sys-red: #ff453a; --sys-orange: #ff9f0a; --sys-green: #30d158; --sys-teal: #40cbe0;
   --sys-blue: #0a84ff; --sys-indigo: #5e5ce6; --sys-purple: #bf5af2; --sys-pink: #ff375f;
   --stage-deep-text: #9a94ff; --stage-awake-text: #ff9a85; --stage-rem-text: #5cd0e8; --stage-light-text: #8fa4ff;
+  --sys-cyan: #64d2ff; --sys-yellow: #ffd60a;
+  --label4: #48484a; --teal-text: #40cbe0; --stage-deep: #5b50d6;
+  --chart-muted: #636366; --chart-grid: rgb(255 255 255 / 0.07); --chart-pointer: rgb(255 255 255 / 0.35); --chart-faint: rgb(255 255 255 / 0.05);
+  --tip-bg: rgb(44 44 46 / 0.94); --tip-border: rgb(255 255 255 / 0.1); --tip-shadow: rgb(0 0 0 / 0.5);
   --label2: #98989d;
   --label3: #8e8e93;
   --sep: rgb(84 84 88 / 0.45);

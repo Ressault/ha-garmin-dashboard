@@ -1,5 +1,11 @@
 # Journal des changements
 
+## 1.2.1 — 28 novembre 2026 · fin de l'audit
+
+- Redites : une page de référence par indicateur. FC au repos et VO₂ max sur Forme, VFC sur Sommeil, charge (forme, fatigue, fraîcheur) sur Entraînement. Synthèse et Mes piliers ne gardent qu'un chiffre par indicateur, avec un renvoi.
+- Couleurs : plus aucune couleur écrite dans les fichiers d'interface. Tout passe par les jetons de `index.css` (clair et sombre) ; `lib/palette.ts` n'en contient plus.
+- Fichiers découpés par thème : `sync.py` (5 fichiers), `ui/charts/` (6), `views/activite/` (5), `views/longevite/` (4). Les fonctions de synchro sont identiques, seulement déplacées.
+
 ## 1.2.0 — 28 novembre 2026 · application de l'audit complet
 
 Version de retour arrière : branche `sauvegarde-v1.1.47-avant-audit`.

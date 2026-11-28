@@ -9,8 +9,8 @@ import { routeKey, sectionOf, subviewDir, useRoute, type Route } from "@/lib/rou
 import { useEdgeFades, usePageSwipe } from "@/ui/scrub";
 import { Sidebar, TabBar } from "@/ui/shell";
 import { LoginGate } from "@/ui/status";
-import { Activites, Entrainement, Progres, Records } from "@/views/Activite";
-import { Forme, Piliers, Sommeil } from "@/views/Longevite";
+import { Activites, Entrainement, Progres, Records } from "@/views/activite";
+import { Forme, Piliers, Sommeil } from "@/views/longevite";
 import Programme from "@/views/Programme";
 import Synthese from "@/views/Synthese";
 

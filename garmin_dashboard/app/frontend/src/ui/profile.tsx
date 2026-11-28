@@ -59,8 +59,8 @@ export function Avatar({ size = 64, className = "" }: { size?: number; className
   return (
     <span
       aria-hidden
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white shadow-[0_0_0_3px_var(--card),0_6px_16px_-6px_rgb(40_60_140/0.4)] ${className}`}
-      style={{ width: size, height: size, fontSize: size * 0.44, background: photo ? `center/cover url(${photo})` : "linear-gradient(135deg,#7AB8FF,#B48CF2)" }}
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white shadow-[0_0_0_3px_var(--card),0_6px_16px_-6px_var(--sh-avatar)] ${className}`}
+      style={{ width: size, height: size, fontSize: size * 0.44, background: photo ? `center/cover url(${photo})` : "linear-gradient(135deg,var(--avatar-a),var(--avatar-b))" }}
     >
       {photo ? null : initial}
     </span>
@@ -139,11 +139,11 @@ function Cropper({ src, onCancel, onDone }: { src: string; onCancel: () => void;
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={onCancel} className="hk-press text-[17px] text-[#0a64d8] dark:text-[#409cff]">
+        <button type="button" onClick={onCancel} className="hk-press text-[17px] text-[var(--blue-text)]">
           Annuler
         </button>
         <h2 className="m-0 text-[17px] font-semibold">Recadrer</h2>
-        <button type="button" onClick={apply} disabled={!img} className="hk-press text-[17px] font-semibold text-[#0a64d8] disabled:opacity-40 dark:text-[#409cff]">
+        <button type="button" onClick={apply} disabled={!img} className="hk-press text-[17px] font-semibold text-[var(--blue-text)] disabled:opacity-40">
           Choisir
         </button>
       </div>
@@ -165,12 +165,12 @@ function Cropper({ src, onCancel, onDone }: { src: string; onCancel: () => void;
             style={{ position: "absolute", left: "50%", top: "50%", width: w * k, height: h * k, maxWidth: "none", transform: `translate(calc(-50% + ${off.x}px), calc(-50% + ${off.y}px))`, userSelect: "none", pointerEvents: "none" }}
           />
         )}
-        <div className="pointer-events-none absolute rounded-full" style={{ inset: PAD, boxShadow: "0 0 0 999px rgb(0 0 0 / 0.58)", border: "2px solid rgb(255 255 255 / 0.9)" }} />
+        <div className="pointer-events-none absolute rounded-full" style={{ inset: PAD, boxShadow: "0 0 0 999px var(--scrim)", border: "2px solid color-mix(in srgb, var(--on-color) 90%, transparent)" }} />
         {bad && <p className="absolute inset-0 m-0 flex items-center justify-center p-6 text-center text-[15px] text-white">Image illisible. Essaie une photo JPEG ou PNG.</p>}
       </div>
       <label className="flex items-center gap-3 px-1">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--label2)" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="5" /></svg>
-        <input type="range" min={1} max={4} step={0.01} value={zoom} onChange={(e) => setZ(Number(e.target.value))} aria-label="Zoom" className="h-8 min-w-0 flex-1 accent-[#0a84ff]" />
+        <input type="range" min={1} max={4} step={0.01} value={zoom} onChange={(e) => setZ(Number(e.target.value))} aria-label="Zoom" className="h-8 min-w-0 flex-1 accent-[var(--sys-blue)]" />
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--label2)" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="9" /></svg>
       </label>
       <p className="m-0 text-center text-[13px] text-label2">Fais glisser pour cadrer, pince ou utilise le curseur pour zoomer.</p>
@@ -255,13 +255,13 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
           className="flex flex-col gap-5 p-5"
         >
           <div className="flex items-center justify-between">
-            <button type="button" onClick={onClose} className="hk-press text-[17px] text-[#0a64d8] dark:text-[#409cff]">
+            <button type="button" onClick={onClose} className="hk-press text-[17px] text-[var(--blue-text)]">
               Annuler
             </button>
             <h2 id="profil-titre" className="m-0 text-[17px] font-semibold">
               Profil
             </h2>
-            <button type="submit" disabled={busy} className="hk-press text-[17px] font-semibold text-[#0a64d8] disabled:opacity-50 dark:text-[#409cff]">
+            <button type="submit" disabled={busy} className="hk-press text-[17px] font-semibold text-[var(--blue-text)] disabled:opacity-50">
               {busy ? "…" : "OK"}
             </button>
           </div>
@@ -270,11 +270,11 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
             <button type="button" onClick={() => file.current?.click()} aria-label="Choisir une photo" className="hk-press relative rounded-full">
               <span
                 className="flex size-28 items-center justify-center overflow-hidden rounded-full text-5xl font-semibold text-white"
-                style={{ background: photo ? `center/cover url(${photo})` : "linear-gradient(135deg,#7AB8FF,#B48CF2)" }}
+                style={{ background: photo ? `center/cover url(${photo})` : "linear-gradient(135deg,var(--avatar-a),var(--avatar-b))" }}
               >
                 {photo ? null : initial}
               </span>
-              <span className="absolute right-0 bottom-0 flex size-8 items-center justify-center rounded-full bg-[#0a84ff] text-white ring-[3px] ring-[var(--card)]">
+              <span className="absolute right-0 bottom-0 flex size-8 items-center justify-center rounded-full bg-[var(--sys-blue)] text-white ring-[3px] ring-[var(--card)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
                   <circle cx="12" cy="13" r="3.5" />
@@ -283,16 +283,16 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
             </button>
             <input ref={file} type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0])} />
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-[15px]">
-              <button type="button" onClick={() => file.current?.click()} className="hk-press font-semibold text-[#0a64d8] dark:text-[#409cff]">
+              <button type="button" onClick={() => file.current?.click()} className="hk-press font-semibold text-[var(--blue-text)]">
                 {photo ? "Changer la photo" : "Ajouter une photo"}
               </button>
               {photo ? (
-                <button type="button" onClick={() => setCrop(orig || photo)} className="hk-press font-semibold text-[#0a64d8] dark:text-[#409cff]">
+                <button type="button" onClick={() => setCrop(orig || photo)} className="hk-press font-semibold text-[var(--blue-text)]">
                   Recadrer
                 </button>
               ) : null}
               {photo ? (
-                <button type="button" onClick={() => setPhoto("")} className="hk-press text-[#d70015] dark:text-[#ff6961]">
+                <button type="button" onClick={() => setPhoto("")} className="hk-press text-[var(--bad-text)]">
                   Supprimer
                 </button>
               ) : null}
@@ -307,7 +307,7 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
               maxLength={40}
               autoComplete="given-name"
               enterKeyHint="done"
-              className="h-12 rounded-xl border-0 bg-[var(--fill)] px-4 text-[17px] text-[var(--foreground)] outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]/60"
+              className="h-12 rounded-xl border-0 bg-[var(--fill)] px-4 text-[17px] text-[var(--foreground)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--sys-blue)]/60"
             />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -317,11 +317,11 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
               onChange={(e) => setNote(e.target.value)}
               maxLength={500}
               rows={3}
-              className="rounded-xl border-0 bg-[var(--fill)] px-4 py-3 text-[16px] leading-snug text-[var(--foreground)] outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]/60"
+              className="rounded-xl border-0 bg-[var(--fill)] px-4 py-3 text-[16px] leading-snug text-[var(--foreground)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--sys-blue)]/60"
             />
           </label>
           {err ? (
-            <p role="alert" className="m-0 text-[14px] text-[#d70015] dark:text-[#ff6961]">
+            <p role="alert" className="m-0 text-[14px] text-[var(--bad-text)]">
               {err}
             </p>
           ) : null}

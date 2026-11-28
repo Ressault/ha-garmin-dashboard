@@ -13,7 +13,7 @@ import { C } from "@/lib/palette";
 import { clipToAxis, niceAxis, paceRange, range90, smooth, type Prepared } from "@/lib/series";
 
 const MAX_POINTS = 500;
-const GHOST = "rgba(142,142,147,0.22)";
+const GHOST = "var(--ghost)";
 
 /* ---------- Encart de résumé (façon « Athlete Intelligence ») ---------- */
 export function Insight({ text }: { text: string | null | undefined }) {
@@ -112,7 +112,7 @@ function MetricChart({
         x0 = mid - minW / 2;
         x1 = mid + minW / 2;
       }
-      const color = sg.type === "walk" ? "rgba(255,159,10,0.45)" : "rgba(142,142,147,0.55)";
+      const color = sg.type === "walk" ? "var(--seg-walk)" : "var(--seg-stop)";
       areas.push([{ xAxis: x0, itemStyle: { color } }, { xAxis: x1 }]);
     }
 
@@ -298,7 +298,7 @@ function RelativeEffort({ value, ratio, text }: { value: number; ratio: number |
               <div className="grid h-full grid-cols-[2fr_1.5fr_2fr] gap-1">
                 {zones.map((z) => <span key={z.label} className="rounded-full" style={{ background: z.c }} />)}
               </div>
-              <span className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card shadow-[0_1px_4px_rgb(0_0_0/0.25),0_0_0_2px_var(--foreground)]" style={{ left: `${pos * 100}%` }} />
+              <span className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card shadow-[0_1px_4px_var(--sh-mid),0_0_0_2px_var(--foreground)]" style={{ left: `${pos * 100}%` }} />
             </div>
             <div className="mt-2 grid grid-cols-[2fr_1.5fr_2fr] gap-1 whitespace-nowrap text-[12px]">
               {zones.map((z, i) => (
@@ -388,8 +388,8 @@ export function StravaPanels({ a, prep }: { a: ActivityDetail; prep: Prepared | 
         />
         {segs && segs.some((x) => x.type !== "run") && (
           <p className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: "rgba(255,159,10,0.6)" }} /> Marche</span>
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: "rgba(142,142,147,0.7)" }} /> Arrêt</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: "var(--seg-walk)" }} /> Marche</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: "var(--seg-stop)" }} /> Arrêt</span>
             <span>détectés par ta montre</span>
           </p>
         )}
@@ -435,7 +435,7 @@ export function StravaPanels({ a, prep }: { a: ActivityDetail; prep: Prepared | 
 
       {hasAlt && (
         <Section title="Altitude">
-          <MetricChart prep={prep} title="Altitude" name="Altitude" color="#8E8E93" values={smooth(prep.alt, 2)} unit="m" group={g} fmt={(v) => nf(v)} ghost={false} />
+          <MetricChart prep={prep} title="Altitude" name="Altitude" color={C.gray} values={smooth(prep.alt, 2)} unit="m" group={g} fmt={(v) => nf(v)} ghost={false} />
           <div className="mt-2">
             <StatRow label="Dénivelé positif" value={nf(a.elevation_gain_m)} unit="m" />
             {a.elevation_loss_m != null && <StatRow label="Dénivelé négatif" value={nf(a.elevation_loss_m)} unit="m" />}

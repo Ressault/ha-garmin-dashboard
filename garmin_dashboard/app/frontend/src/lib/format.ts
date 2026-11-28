@@ -205,11 +205,11 @@ export function hrvStatus(raw: string | null | undefined) {
 
 /** Zones Garmin : rouge 0-24, orange 25-49, vert 50-74, bleu 75-94, violet 95-100. */
 export const READINESS_ZONES = [
-  { from: 0, to: 25, label: "Très faible", color: "#FF453A" },
-  { from: 25, to: 50, label: "Faible", color: "#FF9F0A" },
-  { from: 50, to: 75, label: "Modérée", color: "#30D158" },
-  { from: 75, to: 95, label: "Élevée", color: "#0A84FF" },
-  { from: 95, to: 100.01, label: "Optimale", color: "#BF5AF2" },
+  { from: 0, to: 25, label: "Très faible", color: "var(--sys-red)" },
+  { from: 25, to: 50, label: "Faible", color: "var(--sys-orange)" },
+  { from: 50, to: 75, label: "Modérée", color: "var(--sys-green)" },
+  { from: 75, to: 95, label: "Élevée", color: "var(--sys-blue)" },
+  { from: 95, to: 100.01, label: "Optimale", color: "var(--sys-purple)" },
 ] as const;
 
 export function readinessInfo(score: number | null | undefined) {

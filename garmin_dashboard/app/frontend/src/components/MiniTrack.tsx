@@ -28,8 +28,8 @@ export function MiniTrack({ points, type, className }: { points?: [number, numbe
       {shape && (
         <>
           <path d={shape.d} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx={shape.start[0]} cy={shape.start[1]} r="2.6" fill="#30D158" />
-          <circle cx={shape.end[0]} cy={shape.end[1]} r="2.6" fill="#FF453A" />
+          <circle cx={shape.start[0]} cy={shape.start[1]} r="2.6" fill="var(--map-start)" />
+          <circle cx={shape.end[0]} cy={shape.end[1]} r="2.6" fill="var(--map-end)" />
         </>
       )}
     </svg>

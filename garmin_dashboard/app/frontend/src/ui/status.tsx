@@ -121,7 +121,7 @@ export function LoginGate() {
             enterKeyHint="go"
             autoFocus
             aria-invalid={!!err}
-            className="h-12 rounded-xl border-0 bg-[var(--fill)] px-4 text-[17px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]/60"
+            className="h-12 rounded-xl border-0 bg-[var(--fill)] px-4 text-[17px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[var(--sys-blue)]/60"
           />
         </label>
         {err ? <p role="alert" className="m-0 text-[15px] text-[var(--bad-text)]">{err}</p> : null}

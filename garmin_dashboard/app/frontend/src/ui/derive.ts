@@ -75,13 +75,13 @@ export function groupOf(type?: string | null): Group {
   if (t.includes("strength") || t.includes("fitness") || t.includes("cardio")) return "gym";
   return "other";
 }
-export const GROUP_META: Record<Group, { label: string; color: string; bg: string }> = {
-  foot: { label: "Course et trail", color: "#FF2D55", bg: "#FFE5EA" },
-  road: { label: "Vélo de route", color: "#0A84FF", bg: "#E1F4FF" },
-  mtb: { label: "VTT", color: "#FF9F0A", bg: "#FFF0DB" },
-  walk: { label: "Marche et rando", color: "#34C759", bg: "#E3F7E8" },
-  gym: { label: "Musculation", color: "#AF52DE", bg: "#EFE6FB" },
-  other: { label: "Autre", color: "#8E8E93", bg: "#EDEDF2" },
+export const GROUP_META: Record<Group, { label: string; color: string }> = {
+  foot: { label: "Course et trail", color: "var(--sport-foot)" },
+  road: { label: "Vélo de route", color: "var(--sport-road)" },
+  mtb: { label: "VTT", color: "var(--sport-mtb)" },
+  walk: { label: "Marche et rando", color: "var(--sport-walk)" },
+  gym: { label: "Musculation", color: "var(--sport-gym)" },
+  other: { label: "Autre", color: "var(--sport-other)" },
 };
 export const GROUP_ORDER: Group[] = ["foot", "road", "mtb", "walk", "gym"];
 
@@ -145,7 +145,7 @@ export function pct(now: number, prev: number): number | null {
 /* ---------- Piliers de forme ---------- */
 export type PillarStatus = "Optimal" | "Bon" | "À surveiller";
 export const PILLAR_TONE: Record<PillarStatus, "green" | "blue" | "orange"> = { Optimal: "green", Bon: "blue", "À surveiller": "orange" };
-export const PILLAR_COLOR: Record<PillarStatus, string> = { Optimal: "#34C759", Bon: "#0A84FF", "À surveiller": "#FF9500" };
+export const PILLAR_COLOR: Record<PillarStatus, string> = { Optimal: "var(--sys-green)", Bon: "var(--sys-blue)", "À surveiller": "var(--sys-orange)" };
 
 export interface EnduranceLimits { [k: string]: number }
 export function enduranceLevels(json: string | null | undefined): { name: string; min: number }[] {

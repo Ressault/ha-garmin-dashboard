@@ -94,8 +94,8 @@ export const ISun = (p: P) => (
 /* Pictogrammes des pilules du haut : même boîte de 34 × 34, formes pleines, extrémités arrondies, léger dégradé de profondeur (façon SF Symbols). */
 const Gloss = ({ id }: { id: string }) => (
   <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stopColor="#fff" stopOpacity=".34" />
-    <stop offset=".6" stopColor="#fff" stopOpacity="0" />
+    <stop offset="0" stopColor="var(--on-color)" stopOpacity=".34" />
+    <stop offset=".6" stopColor="var(--on-color)" stopOpacity="0" />
   </linearGradient>
 );
 
@@ -106,11 +106,11 @@ export const MiniSleep = ({ score }: { score: number | null }) => {
     <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
       <defs>
         <linearGradient id="ms-ring" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8B94FF" />
-          <stop offset="1" stopColor="#5E6BFF" />
+          <stop offset="0" stopColor="var(--ico-iris-hi)" />
+          <stop offset="1" stopColor="var(--c-iris)" />
         </linearGradient>
       </defs>
-      <circle cx="17" cy="17" r={r} fill="none" stroke="#5E6BFF" strokeOpacity=".18" strokeWidth="4.4" />
+      <circle cx="17" cy="17" r={r} fill="none" stroke="var(--c-iris)" strokeOpacity=".18" strokeWidth="4.4" />
       {L > 0 && <circle cx="17" cy="17" r={r} fill="none" stroke="url(#ms-ring)" strokeWidth="4.4" strokeLinecap="round" strokeDasharray={`${L} ${C}`} transform="rotate(-90 17 17)" />}
       <text x="17" y="17.4" fontSize="11.5" fontWeight="700" textAnchor="middle" dominantBaseline="central" className="fill-foreground">
         {score ?? "–"}
@@ -122,8 +122,8 @@ export const MiniHeart = () => (
   <svg width="34" height="34" viewBox="0.5 0.5 23 22.5" aria-hidden>
     <defs>
       <linearGradient id="mh-fill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#FF5C7E" />
-        <stop offset="1" stopColor="#FF2D55" />
+        <stop offset="0" stopColor="var(--ico-pink-hi)" />
+        <stop offset="1" stopColor="var(--sys-pink)" />
       </linearGradient>
       <Gloss id="mh-gloss" />
     </defs>
@@ -135,8 +135,8 @@ export const MiniTrend = () => (
   <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden fill="none" strokeLinecap="round" strokeLinejoin="round">
     <defs>
       <linearGradient id="mt-line" gradientUnits="userSpaceOnUse" x1="5" y1="28" x2="29" y2="6">
-        <stop offset="0" stopColor="#C984F5" />
-        <stop offset="1" stopColor="#AF52DE" />
+        <stop offset="0" stopColor="var(--ico-purple-hi)" />
+        <stop offset="1" stopColor="var(--sys-purple)" />
       </linearGradient>
     </defs>
     <path d="M5.5 25 13.5 16.5 19 21.5 28 10.5" stroke="url(#mt-line)" strokeWidth="4.6" />
@@ -150,7 +150,7 @@ export const MiniPillars = ({ colors }: { colors: string[] }) => (
     </defs>
     {[[17, 8.6], [25.4, 17], [17, 25.4], [8.6, 17]].map(([x, y], i) => (
       <g key={i}>
-        <circle cx={x} cy={y} r="5.3" fill={colors[i] ?? "#C7C7CC"} />
+        <circle cx={x} cy={y} r="5.3" fill={colors[i] ?? "var(--label4)"} />
         <circle cx={x} cy={y} r="5.3" fill="url(#mp-gloss)" />
       </g>
     ))}
@@ -160,8 +160,8 @@ export const MiniList = () => (
   <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
     <defs>
       <linearGradient id="ml-fill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#FF5C7E" />
-        <stop offset="1" stopColor="#FF2D55" />
+        <stop offset="0" stopColor="var(--ico-pink-hi)" />
+        <stop offset="1" stopColor="var(--sys-pink)" />
       </linearGradient>
       <Gloss id="ml-gloss" />
     </defs>
@@ -179,10 +179,10 @@ export const MiniZones = () => (
       <Gloss id="mz-gloss" />
     </defs>
     {[
-      [2.2, 12, "#30B0C7"],
-      [10.2, 19, "#34C759"],
-      [18.2, 28, "#FFB800"],
-      [26.2, 22, "#FF6B2C"],
+      [2.2, 12, "var(--sys-teal)"],
+      [10.2, 19, "var(--sys-green)"],
+      [18.2, 28, "var(--c-amber)"],
+      [26.2, 22, "var(--c-ember)"],
     ].map(([x, h, c], i) => (
       <g key={i}>
         <rect x={x as number} y={31 - (h as number)} width="5.6" height={h as number} rx="2.8" fill={c as string} />
@@ -197,35 +197,35 @@ export const MiniPlan = () => (
   <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
     <defs>
       <linearGradient id="mp-body" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#4BE06E" />
-        <stop offset="1" stopColor="#30D158" />
+        <stop offset="0" stopColor="var(--ico-green-hi)" />
+        <stop offset="1" stopColor="var(--sys-green)" />
       </linearGradient>
     </defs>
-    <rect x="10" y="2.5" width="3.6" height="8" rx="1.8" fill="#23A843" />
-    <rect x="20.4" y="2.5" width="3.6" height="8" rx="1.8" fill="#23A843" />
+    <rect x="10" y="2.5" width="3.6" height="8" rx="1.8" fill="var(--ico-green-lo)" />
+    <rect x="20.4" y="2.5" width="3.6" height="8" rx="1.8" fill="var(--ico-green-lo)" />
     <rect x="3.5" y="5.5" width="27" height="25.5" rx="7.5" fill="url(#mp-body)" />
-    <path d="M3.5 13a7.5 7.5 0 0 1 7.5-7.5h12A7.5 7.5 0 0 1 30.5 13v.5h-27z" fill="#23A843" opacity=".55" />
-    <rect x="10" y="2.5" width="3.6" height="8" rx="1.8" fill="#23A843" />
-    <rect x="20.4" y="2.5" width="3.6" height="8" rx="1.8" fill="#23A843" />
+    <path d="M3.5 13a7.5 7.5 0 0 1 7.5-7.5h12A7.5 7.5 0 0 1 30.5 13v.5h-27z" fill="var(--ico-green-lo)" opacity=".55" />
+    <rect x="10" y="2.5" width="3.6" height="8" rx="1.8" fill="var(--ico-green-lo)" />
+    <rect x="20.4" y="2.5" width="3.6" height="8" rx="1.8" fill="var(--ico-green-lo)" />
     {[[10.5, 20], [17, 20], [23.5, 20], [10.5, 26], [17, 26]].map(([x, y], i) => (
-      <circle key={i} cx={x} cy={y} r="2.1" fill="#fff" />
+      <circle key={i} cx={x} cy={y} r="2.1" fill="var(--on-color)" />
     ))}
-    <circle cx="23.5" cy="26" r="2.1" fill="#fff" opacity=".5" />
+    <circle cx="23.5" cy="26" r="2.1" fill="var(--on-color)" opacity=".5" />
   </svg>
 );
 export const MiniMedal = () => (
   <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
     <defs>
       <linearGradient id="mm-gold" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#FFC247" />
-        <stop offset="1" stopColor="#FF9F0A" />
+        <stop offset="0" stopColor="var(--ico-orange-hi)" />
+        <stop offset="1" stopColor="var(--sys-orange)" />
       </linearGradient>
     </defs>
     <path d="M9.5 7.5H7A2 2 0 0 0 5 9.5c0 4.2 2.6 6.6 6.2 7.2M24.5 7.5H27a2 2 0 0 1 2 2c0 4.2-2.6 6.6-6.2 7.2" fill="none" stroke="url(#mm-gold)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M8.5 4.5h17v10.2c0 5-3.8 8.8-8.5 8.8s-8.5-3.8-8.5-8.8z" fill="url(#mm-gold)" />
     <rect x="15" y="22" width="4" height="4.5" fill="url(#mm-gold)" />
     <rect x="9.5" y="26" width="15" height="4.5" rx="2.25" fill="url(#mm-gold)" />
-    <path d="M12.2 7.5v7c0 2.2 1 3.9 2.6 4.8" fill="none" stroke="#fff" strokeOpacity=".4" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M12.2 7.5v7c0 2.2 1 3.9 2.6 4.8" fill="none" stroke="var(--on-color)" strokeOpacity=".4" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 
@@ -235,9 +235,9 @@ export function BigHeart({ id }: { id: string }) {
     <svg width="100%" height="100%" viewBox="0 0 220 200" aria-hidden>
       <defs>
         <radialGradient id={id} cx=".38" cy=".32" r=".85">
-          <stop offset="0" stopColor="#FF9AAB" />
-          <stop offset=".55" stopColor="#FF4467" />
-          <stop offset="1" stopColor="#E3224A" />
+          <stop offset="0" stopColor="var(--heart-1)" />
+          <stop offset=".55" stopColor="var(--heart-2)" />
+          <stop offset="1" stopColor="var(--heart-3)" />
         </radialGradient>
       </defs>
       <path d="M110 186s-96-58-96-126C14 30 38 8 68 8c18 0 34 10 42 25 8-15 24-25 42-25 30 0 54 22 54 52 0 68-96 126-96 126z" fill={`url(#${id})`} />
