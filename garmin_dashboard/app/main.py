@@ -288,6 +288,7 @@ def sync_status() -> dict:
         err_at = db.get_setting(conn, "sync_last_error_at")
         fails = int(db.get_setting(conn, "sync_fail_count", "0") or 0)
         measured = db.get_setting(conn, "last_measure_at")
+        upload = db.get_setting(conn, "watch_upload_at")
     now = datetime.now()
 
     def age_min(iso: Optional[str]) -> Optional[int]:
@@ -310,6 +311,9 @@ def sync_status() -> dict:
         "last_error_at": err_at if fails > 0 else None,
         "last_measure_at": measured,
         "last_measure_age_min": age_min(measured),
+        # dernier envoi de la montre à Garmin : aucune synchro ne peut ramener plus récent
+        "watch_upload_at": upload,
+        "watch_upload_age_min": age_min(upload),
     }
 
 

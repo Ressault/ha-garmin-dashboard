@@ -21,6 +21,8 @@ class FakeGarmin:
                 raise ConnectionError("réseau coupé")
             if name == "get_activities_by_date":
                 return self.acts
+            if name == "get_device_last_used":
+                return {"lastUsedDeviceUploadTime": 1795849337000, "lastUsedDeviceName": "montre"}
             if name == "get_stats":
                 return {"restingHeartRate": 50, "bodyBatteryMostRecentValue": 60, "wellnessEndTimeLocal": "2026-11-28T08:10:00.0"}
             if name == "get_sleep_data":
@@ -76,7 +78,7 @@ def test_light_sync_skips_the_night_once_received(conn):
     second = FakeGarmin()
     sync.run_light_sync(client=second, log=quiet)
     assert "get_hrv_data" not in second.calls
-    assert len(second.calls) <= 8
+    assert len(second.calls) <= 9
 
 
 def test_unreachable_garmin_raises_and_releases_the_lock(conn):
@@ -89,3 +91,9 @@ def test_unreachable_garmin_raises_and_releases_the_lock(conn):
 def test_last_measure_time_is_recorded(conn):
     sync.run_light_sync(client=FakeGarmin(), log=quiet)
     assert db.get_setting(db.connect(), "last_measure_at") == "2026-11-28T08:10:00"
+
+
+def test_watch_upload_time_is_recorded_and_returned(conn):
+    out = sync.run_light_sync(client=FakeGarmin(), log=quiet)
+    assert out["watch_upload_at"] and out["watch_upload_at"].startswith("2026-11-28T")
+    assert db.get_setting(db.connect(), "watch_upload_at") == out["watch_upload_at"]

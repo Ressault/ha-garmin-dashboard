@@ -8,6 +8,7 @@ import { PATH, sectionOf, type Route } from "@/lib/route";
 import { useTheme } from "@/lib/theme";
 import { IFlower, IGrid, IHeart, ISearch } from "./icons";
 import { useScrubNav } from "./scrub";
+import { whenLabel } from "./status";
 
 const TABS = [
   { key: "synthese", label: "Synthèse", href: PATH.synthese, Icon: IHeart },
@@ -247,7 +248,11 @@ export function SyncButton({ wide }: { wide?: boolean }) {
       const r = await api.sync(30);
       bump();
       const msg = `${r.activities_detailed} sortie${r.activities_detailed > 1 ? "s" : ""} détaillée${r.activities_detailed > 1 ? "s" : ""} · ${r.health_days} jour${r.health_days > 1 ? "s" : ""} de santé`;
-      if (r.error_count > 0) toast.warning("Synchronisation terminée avec des avertissements", { id, description: `${msg} · ${r.error_count} erreur${r.error_count > 1 ? "s" : ""} ignorée${r.error_count > 1 ? "s" : ""}` });
+      // Garmin n'a que ce que la montre lui a envoyé : si son dernier envoi est ancien, la synchro ne peut rien ramener de neuf
+      const sent = r.watch_upload_at ? new Date(r.watch_upload_at) : null;
+      const late = sent && Date.now() - sent.getTime() > 45 * 60_000;
+      if (late) toast.warning(`Ta montre n'a rien envoyé à Garmin depuis ${whenLabel(r.watch_upload_at)}`, { id, duration: 9000, description: "Les chiffres s'arrêtent à cette heure. Ouvre Garmin Connect sur ton téléphone pour envoyer les données de la montre, puis resynchronise." });
+      else if (r.error_count > 0) toast.warning("Synchronisation terminée avec des avertissements", { id, description: `${msg} · ${r.error_count} erreur${r.error_count > 1 ? "s" : ""} ignorée${r.error_count > 1 ? "s" : ""}` });
       else toast.success("Synchronisation terminée", { id, description: `${msg} · ${r.duration_s} s` });
     } catch (e) {
       toast.error("Échec de la synchronisation", { id, description: e instanceof Error ? e.message : "Erreur inconnue" });

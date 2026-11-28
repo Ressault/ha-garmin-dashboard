@@ -32,7 +32,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 import db
-from sync_utils import daterange
+from sync_utils import daterange, safe
 from sync_activities import activity_detail_row, backfill_power_curves, backfill_segments, store_detail, upsert_summary
 from sync_health import backfill_health_details, daily_health_row
 from sync_scores import backfill_fitness_history, recompute_fitness, sync_fitness_scores, sync_predictions, sync_thresholds
@@ -44,6 +44,21 @@ SYNC_LOCK = threading.Lock()
 
 class GarminUnreachable(RuntimeError):
     """Garmin n'a pas répondu à l'appel de base : la synchro est abandonnée et sera retentée."""
+
+
+def record_watch_upload(client, conn, errors: list) -> Any:
+    """Note l'heure du dernier envoi de la montre à Garmin : rien de plus récent ne peut être récupéré.
+
+    Sert à expliquer dans l'appli pourquoi une synchro ne ramène rien de neuf (montre pas encore
+    synchronisée avec Garmin Connect sur le téléphone)."""
+    info = safe("dernier envoi de la montre", errors, client.get_device_last_used)
+    ms = info.get("lastUsedDeviceUploadTime") if isinstance(info, dict) else None
+    if not ms:
+        return None
+    at = datetime.fromtimestamp(ms / 1000).isoformat(timespec="seconds")
+    db.set_setting(conn, "watch_upload_at", at)
+    db.set_setting(conn, "watch_name", str(info.get("lastUsedDeviceName") or ""))
+    return at
 
 
 def _fetch_activities(client, start: date, end: date) -> list:
@@ -151,6 +166,7 @@ def _run_sync(days: int, force: bool, client, log) -> dict:
         summary["fitness_days"] = recompute_fitness(conn)
         summary["power_curves_backfilled"] = backfill_power_curves(conn)
 
+        summary["watch_upload_at"] = record_watch_upload(client, conn, errors)
         summary["errors"] = errors[:50]
         summary["error_count"] = len(errors)
         summary["duration_s"] = round(time.time() - t0, 1)
@@ -221,6 +237,7 @@ def run_light_sync(client=None, log=print) -> dict:
             if todo:
                 summary["fitness_days"] = recompute_fitness(conn)
                 summary["power_curves_backfilled"] = backfill_power_curves(conn)
+            summary["watch_upload_at"] = record_watch_upload(client, conn, errors)
             summary["errors"] = errors[:50]
             summary["error_count"] = len(errors)
             summary["duration_s"] = round(time.time() - t0, 1)

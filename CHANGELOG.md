@@ -1,5 +1,9 @@
 # Journal des changements
 
+## 1.2.2 — 28 novembre 2026
+
+- Synchro : l'appli relève l'heure du dernier envoi de la montre à Garmin. Si une synchro ne peut rien ramener de neuf, elle le dit et indique quoi faire (ouvrir Garmin Connect sur le téléphone).
+
 ## 1.2.1 — 28 novembre 2026 · fin de l'audit
 
 - Redites : une page de référence par indicateur. FC au repos et VO₂ max sur Forme, VFC sur Sommeil, charge (forme, fatigue, fraîcheur) sur Entraînement. Synthèse et Mes piliers ne gardent qu'un chiffre par indicateur, avec un renvoi.

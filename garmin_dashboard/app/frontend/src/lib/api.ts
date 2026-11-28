@@ -198,6 +198,8 @@ export interface SyncSummary {
   error_count: number;
   errors: string[];
   duration_s: number;
+  /** dernier envoi de la montre à Garmin (AAAA-MM-JJTHH:MM:SS) */
+  watch_upload_at?: string | null;
 }
 
 export interface SyncStatus {
@@ -215,6 +217,9 @@ export interface SyncStatus {
   /** heure de la dernière donnée envoyée par la montre */
   last_measure_at: string | null;
   last_measure_age_min: number | null;
+  /** dernier envoi de la montre à Garmin : aucune synchro ne peut ramener plus récent */
+  watch_upload_at?: string | null;
+  watch_upload_age_min?: number | null;
 }
 
 export interface ThresholdTest {

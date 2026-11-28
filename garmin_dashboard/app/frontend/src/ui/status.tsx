@@ -52,7 +52,7 @@ export function SyncLine() {
   const s = q.data;
   if (!s) return <Sm className="mt-0.5">{q.failed ? "État de la synchro inconnu" : " "}</Sm>;
   const ok = whenLabel(s.last_ok_at);
-  const watch = whenLabel(s.last_measure_at);
+  const watch = whenLabel(s.watch_upload_at ?? s.last_measure_at);
   const late = s.auto === "on" && s.last_ok_age_min != null && s.last_ok_age_min > 120;
   if (s.failing || late) {
     return (
