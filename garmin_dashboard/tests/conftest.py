@@ -5,7 +5,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-APP = Path(__file__).resolve().parent.parent / "app"
+# Dépôt de l'add-on : le code est dans app/ ; copie du PC : il est à côté du dossier tests/
+_root = Path(__file__).resolve().parent.parent
+APP = _root / "app" if (_root / "app" / "main.py").exists() else _root
 sys.path.insert(0, str(APP))
 
 _tmp = tempfile.mkdtemp(prefix="gd-tests-")
